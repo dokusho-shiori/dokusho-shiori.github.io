@@ -1,0 +1,18 @@
+{
+  "projects": {
+    "default": "shiori-8fd3f"
+  },
+  "targets": {
+    "shiori-8fd3f": {
+      "hosting": {
+        "lp": [
+          "shiori-official"
+        ],
+        "app": [
+          "shiori-8fd3f"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

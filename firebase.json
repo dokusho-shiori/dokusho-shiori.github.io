@@ -1,0 +1,43 @@
+{
+  "hosting": [
+    {
+      "target": "app",
+      "public": "build/web",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    {
+      "target": "lp",
+      "public": "build/lp",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    }
+  ],
+  "projects": {
+    "default": "shiori-8fd3f"
+  },
+  "targets": {
+    "shiori-8fd3f": {
+      "hosting": {
+        "app": [
+          "shiori-8fd3f"
+        ],
+        "lp": [
+          "shiori-official"
+        ]
+      }
+    }
+  }
+}
