@@ -6,11 +6,13 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive_nav.dart';
+import '../utils/breakpoint.dart';
 import '../widgets/book_card.dart';
 import 'book_form_screen.dart';
 import 'settings_screen.dart';
 import 'memo_form_screen.dart';
 import 'book_detail_screen.dart';
+import 'mobile/mobile_shell.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -82,6 +84,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (isMobileLayout(context)) {
+      return const MobileShell();
+    }
     return Scaffold(
       body: StreamBuilder<List<Book>>(
         stream: _firestoreService.booksStream(),
@@ -123,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           GestureDetector(
             onTap: () async {
-            final Uri url = Uri.parse('https://shiori-official.digitalhack-note.com/');
+            final Uri url = Uri.parse('https://dokusho-shiori.com');
             if (await canLaunchUrl(url)) {
             await launchUrl(url, mode: LaunchMode.externalApplication);
           }
