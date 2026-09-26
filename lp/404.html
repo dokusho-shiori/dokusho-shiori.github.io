@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>栞</title>
+<script>
+  // ページが見つからないとき：アプリ内ならアプリのトップ、それ以外はサイトのトップへ
+  location.replace(location.pathname.indexOf('/app') === 0 ? '/app/' : '/');
+</script>
+</head>
+<body></body>
+</html>
