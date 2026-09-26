@@ -3,11 +3,13 @@ import '../../models/book.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/mobile_theme.dart';
 import '../../utils/responsive_nav.dart';
+import '../../utils/cover_image.dart';
 import '../book_detail_screen.dart';
 import '../settings_screen.dart';
 
 class MobileBookshelfPage extends StatefulWidget {
-  const MobileBookshelfPage({super.key});
+  final String initialFilter;
+  const MobileBookshelfPage({super.key, this.initialFilter = 'all'});
 
   @override
   State<MobileBookshelfPage> createState() => _MobileBookshelfPageState();
@@ -17,7 +19,7 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
   final _firestoreService = FirestoreService();
   final _searchController = TextEditingController();
 
-  String _filter = 'all';
+  late String _filter = widget.initialFilter;
   String _sort = 'newest';
   String _viewMode = 'grid'; // grid=表紙グリッド list=リスト
   bool _searchOpen = false;
@@ -175,10 +177,6 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           children: [
-            const Text('栞', style: TextStyle(
-              fontSize: 20, color: MobileTheme.goldLogo,
-              fontWeight: FontWeight.w900, fontFamily: 'serif')),
-            const SizedBox(width: 8),
             Text('本棚', style: MobileTheme.heading(fontSize: 16, color: Colors.white)),
             const Spacer(),
             _HeaderIcon(
@@ -293,11 +291,13 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
                         color: Colors.black.withValues(alpha: 0.15),
                         blurRadius: 4, offset: const Offset(1, 2))],
                     ),
-                    child: book.thumbnail != null
-                        ? Image.network(book.thumbnail!, fit: BoxFit.cover,
-                            width: double.infinity,
-                            errorBuilder: (_, __, ___) => _coverPlaceholder())
-                        : _coverPlaceholder(),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: book.thumbnail != null
+                          ? CoverNetworkImage(url: book.thumbnail!, fit: BoxFit.cover,
+                              placeholderBuilder: (_) => _coverPlaceholder())
+                          : _coverPlaceholder(),
+                    ),
                   ),
                 ),
               ),
@@ -333,8 +333,8 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
                   child: SizedBox(
                     width: 40, height: 56,
                     child: book.thumbnail != null
-                        ? Image.network(book.thumbnail!, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _coverPlaceholder())
+                        ? CoverNetworkImage(url: book.thumbnail!, fit: BoxFit.cover,
+                            placeholderBuilder: (_) => _coverPlaceholder())
                         : _coverPlaceholder(),
                   ),
                 ),

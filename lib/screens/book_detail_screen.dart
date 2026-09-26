@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/book.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive_nav.dart';
+import '../utils/cover_image.dart';
 import 'book_form_screen.dart';
 import 'memo_form_screen.dart';
 
@@ -99,9 +100,10 @@ class BookDetailScreen extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: b.thumbnail != null
-                      ? Image.network(b.thumbnail!, fit: BoxFit.cover,
+                      ? CoverNetworkImage(
                           key: ValueKey(b.thumbnail),
-                          errorBuilder: (_, __, ___) => _Cover())
+                          url: b.thumbnail!, fit: BoxFit.cover,
+                          placeholderBuilder: (_) => _Cover())
                       : _Cover(),
                 ),
               ),

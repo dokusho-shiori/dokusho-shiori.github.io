@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../screens/memo_form_screen.dart';
 import '../screens/book_detail_screen.dart';
 import '../utils/responsive_nav.dart';
+import '../utils/cover_image.dart';
 
 class BookCard extends StatefulWidget {
   final Book book;
@@ -345,8 +346,8 @@ class _CoverImage extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: url != null
-                ? Image.network(url, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _Placeholder())
+                ? CoverNetworkImage(url: url, fit: BoxFit.cover,
+                    placeholderBuilder: (_) => _Placeholder())
                 : _Placeholder(),
           ),
         ),
@@ -502,8 +503,8 @@ class BookCardCompact extends StatelessWidget {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
                 child: SizedBox.expand(
                   child: book.thumbnail != null
-                      ? Image.network(book.thumbnail!, fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => _CompactPlaceholder())
+                      ? CoverNetworkImage(url: book.thumbnail!, fit: BoxFit.contain,
+                          placeholderBuilder: (_) => _CompactPlaceholder())
                       : _CompactPlaceholder(),
                 ),
               ),

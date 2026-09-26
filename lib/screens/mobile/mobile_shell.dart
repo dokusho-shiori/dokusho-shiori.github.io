@@ -5,6 +5,7 @@ import '../../theme/mobile_theme.dart';
 import '../../utils/responsive_nav.dart';
 import '../../widgets/mobile/mobile_bottom_nav.dart';
 import '../../widgets/mobile/register_sheet.dart';
+import '../book_detail_screen.dart';
 import '../book_form_screen.dart';
 import '../memo_form_screen.dart';
 import '../settings_screen.dart';
@@ -24,8 +25,20 @@ class MobileShell extends StatefulWidget {
 class _MobileShellState extends State<MobileShell> {
   MobileTab _tab = MobileTab.home;
   final _firestoreService = FirestoreService();
+  String _bookshelfFilter = 'all';
+  int _bookshelfRequestId = 0;
 
   void _goTo(MobileTab tab) => setState(() => _tab = tab);
+
+  void _openBookshelfFiltered(String filter) {
+    setState(() {
+      _bookshelfFilter = filter;
+      _bookshelfRequestId++;
+      _tab = MobileTab.bookshelf;
+    });
+  }
+
+  void _openBookDetail(Book book) => pushResponsive(context, BookDetailScreen(book: book));
 
   void _openBookForm() => pushResponsive(context, const BookFormScreen());
 
@@ -59,13 +72,13 @@ class _MobileShellState extends State<MobileShell> {
           index: _tab.index,
           children: [
             MobileHomePage(
-              onOpenBookshelf: () => _goTo(MobileTab.bookshelf),
-              onOpenRegisterBook: _openBookForm,
-              onOpenMemoTab: () => _goTo(MobileTab.memo),
-              onOpenMenu: () => _goTo(MobileTab.menu),
-              onWriteMemoFor: (Book book) => _openMemoForm(initialBookId: book.id),
+              onOpenBookshelf: _openBookshelfFiltered,
+              onOpenBookDetail: _openBookDetail,
             ),
-            const MobileBookshelfPage(),
+            MobileBookshelfPage(
+              key: ValueKey(_bookshelfRequestId),
+              initialFilter: _bookshelfFilter,
+            ),
             const MobileMemoPage(),
             const _MenuPage(),
           ],
