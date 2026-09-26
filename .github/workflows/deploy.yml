@@ -1,5 +1,6 @@
-# 栞 Web版を GitHub Pages に自動公開する設定
-# main にアップ（Push）するたびに、Flutter Web をビルドして公開する
+# 栞を GitHub Pages に自動公開する設定
+# トップ（/）＝LP、/app/＝栞アプリ
+# main にアップ（Push）するたびに、自動でビルドして公開する
 name: Deploy Web to GitHub Pages
 
 on:
@@ -29,14 +30,18 @@ jobs:
 
       - run: flutter pub get
 
-      - run: flutter build web --release --base-href /
+      # アプリは /app/ の下で動かす
+      - run: flutter build web --release --base-href /app/
 
-      # ページを直接開いたときの404対策（アプリのトップに戻す）
-      - run: cp build/web/index.html build/web/404.html
+      # 公開用フォルダを組み立てる（LP をトップ、アプリを app フォルダへ）
+      - run: |
+          mkdir -p _site/app
+          cp -r lp/. _site/
+          cp -r build/web/. _site/app/
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: build/web
+          path: _site
 
   deploy:
     needs: build
