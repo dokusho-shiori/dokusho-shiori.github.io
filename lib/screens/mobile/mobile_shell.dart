@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../models/book.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/mobile_theme.dart';
-import '../../utils/responsive_nav.dart';
 import '../../widgets/mobile/mobile_bottom_nav.dart';
 import '../../widgets/mobile/register_sheet.dart';
 import '../book_detail_screen.dart';
@@ -15,6 +14,8 @@ import 'mobile_memo_page.dart';
 
 /// 画面幅600px未満のときに表示するスマホ専用シェル。
 /// 下部ナビゲーション＋4つのタブ（ホーム／本棚／メモ／メニュー）＋登録シートを束ねる。
+/// 本の詳細・登録・メモ入力などの画面に移動しても下部ナビが常に表示され続けるよう、
+/// タブの中身用に専用のNavigatorを1つ持たせ、そこにpushする。
 class MobileShell extends StatefulWidget {
   const MobileShell({super.key});
 
@@ -23,24 +24,42 @@ class MobileShell extends StatefulWidget {
 }
 
 class _MobileShellState extends State<MobileShell> {
-  MobileTab _tab = MobileTab.home;
+  final _innerNavigatorKey = GlobalKey<NavigatorState>();
+  final _tabNotifier = ValueNotifier<MobileTab>(MobileTab.home);
   final _firestoreService = FirestoreService();
+
   String _bookshelfFilter = 'all';
   int _bookshelfRequestId = 0;
 
-  void _goTo(MobileTab tab) => setState(() => _tab = tab);
+  @override
+  void dispose() {
+    _tabNotifier.dispose();
+    super.dispose();
+  }
+
+  void _goTo(MobileTab tab) {
+    _innerNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+    _tabNotifier.value = tab;
+  }
 
   void _openBookshelfFiltered(String filter) {
+    _innerNavigatorKey.currentState?.popUntil((route) => route.isFirst);
     setState(() {
       _bookshelfFilter = filter;
       _bookshelfRequestId++;
-      _tab = MobileTab.bookshelf;
     });
+    _tabNotifier.value = MobileTab.bookshelf;
   }
 
-  void _openBookDetail(Book book) => pushResponsive(context, BookDetailScreen(book: book));
+  void _openBookDetail(Book book) {
+    _innerNavigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => BookDetailScreen(book: book)));
+  }
 
-  void _openBookForm() => pushResponsive(context, const BookFormScreen());
+  void _openBookForm() {
+    _innerNavigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => const BookFormScreen()));
+  }
 
   Future<void> _openMemoForm({String? initialBookId}) async {
     final books = await _firestoreService.booksStream().first;
@@ -50,7 +69,8 @@ class _MobileShellState extends State<MobileShell> {
         const SnackBar(content: Text('先に本を登録してください')));
       return;
     }
-    pushResponsive(context, MemoFormScreen(books: books, initialBookId: initialBookId));
+    _innerNavigatorKey.currentState?.push(MaterialPageRoute(
+      builder: (_) => MemoFormScreen(books: books, initialBookId: initialBookId)));
   }
 
   void _onRegisterTap() {
@@ -68,26 +88,37 @@ class _MobileShellState extends State<MobileShell> {
       body: SafeArea(
         top: false,
         bottom: false,
-        child: IndexedStack(
-          index: _tab.index,
-          children: [
-            MobileHomePage(
-              onOpenBookshelf: _openBookshelfFiltered,
-              onOpenBookDetail: _openBookDetail,
+        child: Navigator(
+          key: _innerNavigatorKey,
+          onGenerateRoute: (settings) => MaterialPageRoute(
+            builder: (_) => ValueListenableBuilder<MobileTab>(
+              valueListenable: _tabNotifier,
+              builder: (context, tab, _) => IndexedStack(
+                index: tab.index,
+                children: [
+                  MobileHomePage(
+                    onOpenBookshelf: _openBookshelfFiltered,
+                    onOpenBookDetail: _openBookDetail,
+                  ),
+                  MobileBookshelfPage(
+                    key: ValueKey(_bookshelfRequestId),
+                    initialFilter: _bookshelfFilter,
+                  ),
+                  const MobileMemoPage(),
+                  const _MenuPage(),
+                ],
+              ),
             ),
-            MobileBookshelfPage(
-              key: ValueKey(_bookshelfRequestId),
-              initialFilter: _bookshelfFilter,
-            ),
-            const MobileMemoPage(),
-            const _MenuPage(),
-          ],
+          ),
         ),
       ),
-      bottomNavigationBar: MobileBottomNav(
-        current: _tab,
-        onSelect: _goTo,
-        onRegister: _onRegisterTap,
+      bottomNavigationBar: ValueListenableBuilder<MobileTab>(
+        valueListenable: _tabNotifier,
+        builder: (context, tab, _) => MobileBottomNav(
+          current: tab,
+          onSelect: _goTo,
+          onRegister: _onRegisterTap,
+        ),
       ),
     );
   }

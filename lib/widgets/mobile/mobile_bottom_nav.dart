@@ -44,8 +44,8 @@ class MobileBottomNav extends StatelessWidget {
                   selected: current == MobileTab.bookshelf,
                   onTap: () => onSelect(MobileTab.bookshelf),
                 ),
-                // 中央：登録ボタン用のスペース確保
-                const Expanded(child: SizedBox()),
+                // 中央：登録ボタンのラベル（実体の丸ボタンは上にPositionedで重ねて浮かせる）
+                const Expanded(child: _RegisterLabelSlot()),
                 _NavItem(
                   icon: Icons.edit_note_rounded,
                   label: 'メモ',
@@ -61,7 +61,7 @@ class MobileBottomNav extends StatelessWidget {
               ],
             ),
             Positioned(
-              top: -22,
+              top: -12,
               child: _RegisterButton(onTap: onRegister),
             ),
           ],
@@ -128,6 +128,34 @@ class _NavItem extends StatelessWidget {
   }
 }
 
+class _RegisterLabelSlot extends StatelessWidget {
+  const _RegisterLabelSlot();
+
+  @override
+  Widget build(BuildContext context) {
+    // 上の丸ボタン（Positionedで浮かせている実体）の高さぶんだけ空けて、
+    // ラベルの位置を他の項目と同じ行に揃える。
+    return SizedBox(
+      height: 64,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 30),
+          const SizedBox(height: 2),
+          Text(
+            '登録',
+            style: MobileTheme.body(
+              fontSize: 11,
+              color: MobileTheme.navSelectedText,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _RegisterButton extends StatelessWidget {
   final VoidCallback onTap;
   const _RegisterButton({required this.onTap});
@@ -140,8 +168,8 @@ class _RegisterButton extends StatelessWidget {
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: Container(
-          width: 56,
-          height: 56,
+          width: 48,
+          height: 48,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: MobileTheme.dark,
@@ -155,19 +183,7 @@ class _RegisterButton extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.add_rounded, color: MobileTheme.goldOnDark, size: 22),
-              Text('登録',
-                style: MobileTheme.body(
-                  fontSize: 9,
-                  color: MobileTheme.goldOnDark,
-                  fontWeight: FontWeight.w700,
-                )),
-            ],
-          ),
+          child: const Icon(Icons.add_rounded, color: MobileTheme.goldOnDark, size: 24),
         ),
       ),
     );

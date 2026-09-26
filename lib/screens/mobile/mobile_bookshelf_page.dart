@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/book.dart';
 import '../../services/firestore_service.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/mobile_theme.dart';
 import '../../utils/responsive_nav.dart';
 import '../../utils/cover_image.dart';
@@ -25,13 +26,8 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
   bool _searchOpen = false;
   String _searchQuery = '';
 
-  static const _statusChips = [
-    {'key': 'all', 'label': 'すべて'},
-    {'key': 'reading', 'label': '読み中'},
-    {'key': 'wish', 'label': '読みたい'},
-    {'key': 'stack', 'label': '積読'},
-    {'key': 'done', 'label': '読了'},
-  ];
+  int _countStatus(List<Book> books, String status) =>
+      books.where((b) => b.status == status).length;
 
   @override
   void dispose() {
@@ -146,20 +142,26 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
       child: Column(
         children: [
           _buildHeader(),
-          _buildChips(),
-          if (_searchOpen) _buildSearchBar(),
           Expanded(
             child: StreamBuilder<List<Book>>(
               stream: _firestoreService.booksStream(),
               builder: (context, snapshot) {
-                final books = _applyFilterSort(snapshot.data ?? []);
-                if (books.isEmpty) {
-                  return Center(
-                    child: Text('本がまだありません',
-                      style: MobileTheme.body(fontSize: 13, color: MobileTheme.textSub)),
-                  );
-                }
-                return _viewMode == 'grid' ? _buildGrid(books) : _buildList(books);
+                final allBooks = snapshot.data ?? [];
+                final displayed = _applyFilterSort(allBooks);
+                return Column(
+                  children: [
+                    _buildStatusTabs(allBooks),
+                    if (_searchOpen) _buildSearchBar(),
+                    Expanded(
+                      child: displayed.isEmpty
+                          ? Center(
+                              child: Text('本がまだありません',
+                                style: MobileTheme.body(fontSize: 13, color: MobileTheme.textSub)),
+                            )
+                          : (_viewMode == 'grid' ? _buildGrid(displayed) : _buildList(displayed)),
+                    ),
+                  ],
+                );
               },
             ),
           ),
@@ -227,40 +229,58 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
     );
   }
 
-  Widget _buildChips() {
+  // PC版の本棚タブ（_buildNavTabs）と同じ項目・順番・配色。設定タブは含めない。
+  Widget _buildStatusTabs(List<Book> allBooks) {
+    final tabs = [
+      {'key': 'all',     'label': '📚 本棚',    'count': '${allBooks.length}'},
+      {'key': 'reading', 'label': '📖 読み中',  'count': '${_countStatus(allBooks, 'reading')}'},
+      {'key': 'wish',    'label': '🌙 読みたい', 'count': '${_countStatus(allBooks, 'wish')}'},
+      {'key': 'stack',   'label': '📚 積読',    'count': '${_countStatus(allBooks, 'stack')}'},
+      {'key': 'done',    'label': '✅ 読了',    'count': '${_countStatus(allBooks, 'done')}'},
+    ];
+
     return Container(
-      color: MobileTheme.bg,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      child: SizedBox(
-        height: 36,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: _statusChips.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (_, i) {
-            final chip = _statusChips[i];
-            final selected = _filter == chip['key'];
-            return GestureDetector(
-              onTap: () => setState(() => _filter = chip['key']!),
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 36),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? MobileTheme.dark : Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: selected ? MobileTheme.dark : MobileTheme.cardBorder),
-                ),
-                child: Text(chip['label']!, style: MobileTheme.body(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: selected ? MobileTheme.goldOnDark : MobileTheme.textBody,
-                )),
+      color: AppTheme.tabBg,
+      height: 52,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: tabs.length,
+        itemBuilder: (_, i) {
+          final tab = tabs[i];
+          final isActive = _filter == tab['key'];
+          return GestureDetector(
+            onTap: () => setState(() => _filter = tab['key']!),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: isActive ? AppTheme.gold : Colors.transparent,
+                    width: 2.5)),
               ),
-            );
-          },
-        ),
+              child: Row(
+                children: [
+                  Text(tab['label']!,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                      color: isActive ? AppTheme.gold : const Color(0xFFAAAAAA))),
+                  const SizedBox(width: 5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: isActive ? AppTheme.gold : const Color(0xFF555555),
+                      borderRadius: BorderRadius.circular(10)),
+                    child: Text(tab['count']!,
+                      style: TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.bold,
+                        color: isActive ? Colors.black : Colors.white)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

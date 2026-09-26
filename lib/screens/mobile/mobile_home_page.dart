@@ -236,10 +236,10 @@ class _ShelfCountsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const tiles = [
-      {'key': 'reading', 'label': '読み中'},
-      {'key': 'wish', 'label': '読みたい'},
-      {'key': 'stack', 'label': '積読'},
-      {'key': 'done', 'label': '読了'},
+      {'key': 'reading', 'label': '読み中', 'emoji': '📖'},
+      {'key': 'wish', 'label': '読みたい', 'emoji': '🌙'},
+      {'key': 'stack', 'label': '積読', 'emoji': '📚'},
+      {'key': 'done', 'label': '読了', 'emoji': '✅'},
     ];
 
     return Column(
@@ -247,22 +247,31 @@ class _ShelfCountsSection extends StatelessWidget {
       children: [
         const _SectionHeading(title: '本棚'),
         const SizedBox(height: 12),
-        Row(
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.7,
           children: tiles.map((t) {
             final key = t['key']!;
-            return Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(right: key == 'done' ? 0 : 8),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => onOpenBookshelf(key),
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      constraints: const BoxConstraints(minHeight: 44),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: MobileTheme.cardDecoration(radius: 14),
-                      child: Column(
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => onOpenBookshelf(key),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  decoration: MobileTheme.cardDecoration(radius: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(t['emoji']!, style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 8),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text('${_count(key)}', style: MobileTheme.body(
                             fontSize: 18, fontWeight: FontWeight.w700, color: MobileTheme.textBody)),
@@ -271,7 +280,7 @@ class _ShelfCountsSection extends StatelessWidget {
                             fontSize: 11, color: MobileTheme.textSub)),
                         ],
                       ),
-                    ),
+                    ],
                   ),
                 ),
               ),
