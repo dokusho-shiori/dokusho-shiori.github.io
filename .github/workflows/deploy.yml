@@ -1,5 +1,5 @@
 # 栞を GitHub Pages に自動公開する設定
-# トップ（/）＝LP、/app/＝栞アプリ
+# トップ（/）＝LP、/app/＝栞アプリ（本番）、/preview/＝公開前の確認用
 # main にアップ（Push）するたびに、自動でビルドして公開する
 name: Deploy Web to GitHub Pages
 
@@ -16,6 +16,10 @@ permissions:
 concurrency:
   group: pages
   cancel-in-progress: true
+
+env:
+  # 確認用（/preview/）に出す作業用の枝。この枝がなければ /preview/ は作らない
+  PREVIEW_BRANCH: mobile-design
 
 jobs:
   build:
@@ -38,6 +42,39 @@ jobs:
           mkdir -p _site/app
           cp -r lp/. _site/
           cp -r build/web/. _site/app/
+
+      # ---- ここから確認用（/preview/）----
+      # 作業用の枝を /preview/ の下に置く。本番（/ と /app/）の中身は変えない。
+      # 確認用のビルドに失敗しても、本番の公開は止めない。
+      - name: 確認用の枝があるか調べる
+        id: preview
+        run: |
+          if git ls-remote --exit-code --heads origin "$PREVIEW_BRANCH" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 確認用の枝を取り出す
+        if: steps.preview.outputs.exists == 'true'
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PREVIEW_BRANCH }}
+          path: _preview_src
+
+      - name: 確認用をビルドして /preview/ に置く
+        if: steps.preview.outputs.exists == 'true'
+        continue-on-error: true
+        working-directory: _preview_src
+        run: |
+          flutter pub get
+          flutter build web --release --base-href /preview/
+          # 検索に載らないようにし、タブの名前で本番と見分けられるようにする
+          sed -i 's#<head>#<head><meta name="robots" content="noindex">#' build/web/index.html
+          sed -i 's#<title>栞</title>#<title>栞（確認用）</title>#' build/web/index.html
+          mkdir -p ../_site/preview
+          cp -r build/web/. ../_site/preview/
 
       - uses: actions/upload-pages-artifact@v3
         with:
