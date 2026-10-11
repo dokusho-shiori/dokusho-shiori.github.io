@@ -35,6 +35,16 @@ class FirestoreService {
     await _booksRef.doc(book.id).update(book.toMap());
   }
 
+  /// 関連リンクだけを書き換える（null を渡すと削除）。
+  /// 本のほかの項目には触れない。
+  Future<void> updateBookLink(String bookId, String? url) async {
+    if (_uid == null) return;
+    await _booksRef.doc(bookId).update({
+      'linkUrl': url,
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    });
+  }
+
   Future<void> deleteBook(String bookId) async {
     if (_uid == null) return;
     await _booksRef.doc(bookId).delete();

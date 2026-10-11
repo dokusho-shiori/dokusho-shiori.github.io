@@ -1,0 +1,36 @@
+# 公開前の動作チェック
+# main 以外の枝（作業用ブランチ）にアップしたとき、
+# プログラムの解析・テスト・ビルドだけを行う。公開（デプロイ）はしない。
+name: Check (no deploy)
+
+on:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # エラーがあれば止める（注意・情報レベルの指摘では止めない）
+      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - run: flutter test
+
+      # 本番と同じ条件でビルドできるかを確認する
+      - run: flutter build web --release --base-href /app/

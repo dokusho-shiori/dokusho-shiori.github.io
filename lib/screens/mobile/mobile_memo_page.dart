@@ -58,7 +58,9 @@ class _MemoBookRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     return GestureDetector(
-      onTap: () => pushResponsive(context, BookDetailScreen(book: book)),
+      // メモタブから開いたときは、本の詳細のメモ一覧の位置まで移動する
+      onTap: () => pushResponsive(context,
+          BookDetailScreen(book: book, scrollToMemos: true)),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: MobileTheme.cardDecoration(radius: 16),
