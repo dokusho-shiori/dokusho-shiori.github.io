@@ -28,9 +28,36 @@ jobs:
       - run: flutter pub get
 
       # エラーがあれば止める（注意・情報レベルの指摘では止めない）
-      - run: flutter analyze --no-fatal-infos --no-fatal-warnings
+      # 見つかったエラーは、実行結果の一覧にも1件ずつ表示する
+      - name: flutter analyze
+        run: |
+          status=0
+          flutter analyze --no-fatal-infos --no-fatal-warnings > analyze.txt 2>&1 || status=$?
+          cat analyze.txt
+          grep -E '^\s*error' analyze.txt | head -n 10 | while read -r line; do
+            echo "::error title=flutter analyze::$line"
+          done
+          exit $status
 
-      - run: flutter test
+      - name: flutter test
+        run: |
+          status=0
+          flutter test > test.txt 2>&1 || status=$?
+          cat test.txt
+          if [ $status -ne 0 ]; then
+            msg=$(tail -n 40 test.txt | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=flutter test::$msg"
+          fi
+          exit $status
 
       # 本番と同じ条件でビルドできるかを確認する
-      - run: flutter build web --release --base-href /app/
+      - name: flutter build web
+        run: |
+          status=0
+          flutter build web --release --base-href /app/ > build.txt 2>&1 || status=$?
+          cat build.txt
+          if [ $status -ne 0 ]; then
+            msg=$(tail -n 40 build.txt | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=flutter build web::$msg"
+          fi
+          exit $status
