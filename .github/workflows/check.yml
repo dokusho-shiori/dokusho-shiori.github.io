@@ -25,6 +25,8 @@ jobs:
           channel: stable
           cache: true
 
+      - run: flutter --version
+
       - run: flutter pub get
 
       # エラーがあれば止める（注意・情報レベルの指摘では止めない）
@@ -39,7 +41,9 @@ jobs:
           done
           exit $status
 
+      # 前の手順が失敗していても実行し、問題をまとめて把握できるようにする
       - name: flutter test
+        if: ${{ !cancelled() }}
         run: |
           status=0
           flutter test > test.txt 2>&1 || status=$?
@@ -52,6 +56,7 @@ jobs:
 
       # 本番と同じ条件でビルドできるかを確認する
       - name: flutter build web
+        if: ${{ !cancelled() }}
         run: |
           status=0
           flutter build web --release --base-href /app/ > build.txt 2>&1 || status=$?
