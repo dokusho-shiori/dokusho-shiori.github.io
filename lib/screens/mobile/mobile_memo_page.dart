@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../models/book.dart';
 import '../../services/firestore_service.dart';
 import '../../theme/mobile_theme.dart';
+import '../../utils/cover_image.dart';
 import '../../utils/responsive_nav.dart';
 import '../book_detail_screen.dart';
 
@@ -71,8 +72,8 @@ class _MemoBookRow extends StatelessWidget {
               child: SizedBox(
                 width: 42, height: 58,
                 child: book.thumbnail != null
-                    ? Image.network(book.thumbnail!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholder())
+                    ? CoverNetworkImage(url: book.thumbnail!, fit: BoxFit.cover,
+                        placeholderBuilder: (_) => _placeholder())
                     : _placeholder(),
               ),
             ),
