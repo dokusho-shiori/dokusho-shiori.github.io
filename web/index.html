@@ -26,15 +26,23 @@
       justify-content: center;
       background: #F6F0E4;
       z-index: 9999;
-      animation: appSplashIn 700ms ease-out;
+      opacity: 1;
+      transition: opacity 600ms ease;
     }
+    /* アプリの準備ができたら、全体をフェードで消す（下から本棚が現れる） */
+    #app-splash.is-hiding {
+      opacity: 0;
+      pointer-events: none;
+    }
+    /* ロゴはフェード（ディゾルブ）だけでふわっと出す */
     #app-splash img {
       width: 168px;
       height: 168px;
+      animation: appSplashIn 900ms ease-in-out both;
     }
     @keyframes appSplashIn {
-      from { opacity: 0; transform: translateY(14px); }
-      to   { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; }
+      to   { opacity: 1; }
     }
   </style>
 </head>
@@ -42,13 +50,27 @@
   <div id="app-splash"><img src="splash_logo.png" alt="栞"></div>
   <script>
     (function () {
-      function removeSplash() {
+      // ロゴを最低これだけは見せる（ふわっと出きって、少し止まってから消す）
+      var MIN_SHOW_MS = 1400;
+      var started = false;
+      function hideSplash() {
+        if (started) return;
+        started = true;
         var el = document.getElementById('app-splash');
-        if (el) el.remove();
+        if (!el) return;
+        var wait = Math.max(0, MIN_SHOW_MS - performance.now());
+        setTimeout(function () {
+          el.classList.add('is-hiding');
+          setTimeout(function () { el.remove(); }, 700);
+        }, wait);
       }
-      window.addEventListener('flutter-first-frame', removeSplash);
-      // 万一イベントが発火しない場合の保険
-      setTimeout(removeSplash, 4000);
+      // アプリ側から「中身を表示できる」という合図が来たら、ロゴをフェードで消す
+      window.addEventListener('shiori-app-ready', hideSplash);
+      // 万一合図が来ない場合の保険（アプリの最初の描画から3秒後、または8秒後）
+      window.addEventListener('flutter-first-frame', function () {
+        setTimeout(hideSplash, 3000);
+      });
+      setTimeout(hideSplash, 8000);
     })();
   </script>
   <script>
