@@ -155,92 +155,89 @@ class _BookCardState extends State<BookCard> {
           color: Colors.black.withValues(alpha: 0.07),
           blurRadius: 8, offset: const Offset(0, 2))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () => pushResponsive(context, BookDetailScreen(book: widget.book)),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 5, height: 110,
-                    decoration: BoxDecoration(
-                      color: _barColor,
-                      borderRadius: BorderRadius.circular(3)),
-                  ),
-                  const SizedBox(width: 12),
-                  _CoverImage(book: book),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(book.title,
-                          style: const TextStyle(
-                            fontSize: kIsWeb ? 16 : 14, fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary, height: 1.4)),
-                        const SizedBox(height: 4),
-                        Text(
-                          [book.author, book.publisher]
-                              .where((s) => s.isNotEmpty).join(' / '),
-                          style: const TextStyle(fontSize: kIsWeb ? 12 : 10, color: AppTheme.textSecondary)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6, runSpacing: 4,
+      // メモの読み取りは1本だけ。ボタンの件数表示とメモ一覧の両方で使う
+      child: StreamBuilder<QuerySnapshot>(
+        stream: _memoStream,
+        builder: (context, snapshot) {
+          final memos = snapshot.data?.docs ?? const <QueryDocumentSnapshot>[];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () => pushResponsive(context, BookDetailScreen(book: widget.book)),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 5, height: 110,
+                        decoration: BoxDecoration(
+                          color: _barColor,
+                          borderRadius: BorderRadius.circular(3)),
+                      ),
+                      const SizedBox(width: 12),
+                      _CoverImage(book: book),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _Tag(label: _statusLabel),
-                            ...book.tags.map((t) => _Tag(label: t)),
+                            Text(book.title,
+                              style: const TextStyle(
+                                fontSize: kIsWeb ? 16 : 14, fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary, height: 1.4)),
+                            const SizedBox(height: 4),
+                            Text(
+                              [book.author, book.publisher]
+                                  .where((s) => s.isNotEmpty).join(' / '),
+                              style: const TextStyle(fontSize: kIsWeb ? 12 : 10, color: AppTheme.textSecondary)),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6, runSpacing: 4,
+                              children: [
+                                _Tag(label: _statusLabel),
+                                ...book.tags.map((t) => _Tag(label: t)),
+                              ],
+                            ),
+                            if (book.memo != null && book.memo!.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(book.memo!,
+                                style: const TextStyle(
+                                  fontSize: kIsWeb ? 12 : 10, color: AppTheme.textSecondary, height: 1.5),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ],
+                            // アクションボタン（表紙の右隣・タイトルや状態の下）
+                            _CardActions(
+                              onDetail: widget.onDetail ?? () => pushResponsive(context, BookDetailScreen(book: widget.book)),
+                              onEdit: widget.onTap,
+                              onDelete: widget.onDelete,
+                              onAddMemo: widget.onAddMemo,
+                              memoCount: memos.length,
+                              onViewMemos: _openMemos,
+                              linkUrl: normalizeLinkUrl(book.linkUrl),
+                              onLink: _onLinkTap,
+                            ),
                           ],
                         ),
-                        if (book.memo != null && book.memo!.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(book.memo!,
-                            style: const TextStyle(
-                              fontSize: kIsWeb ? 12 : 10, color: AppTheme.textSecondary, height: 1.5),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ],
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
-          if (book.status == 'reading' && book.totalPages > 0)
-            _ProgressBar(book: book),
-          // アクションボタン＋メモ一覧（Firestoreからリアルタイム）
-          StreamBuilder<QuerySnapshot>(
-            stream: _memoStream,
-            builder: (context, snapshot) {
-              final memos = snapshot.data?.docs ?? const <QueryDocumentSnapshot>[];
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _CardActions(
-                    onDetail: widget.onDetail ?? () => pushResponsive(context, BookDetailScreen(book: widget.book)),
-                    onEdit: widget.onTap,
-                    onDelete: widget.onDelete,
-                    onAddMemo: widget.onAddMemo,
-                    memoCount: memos.length,
-                    onViewMemos: _openMemos,
-                    linkUrl: normalizeLinkUrl(book.linkUrl),
-                    onLink: _onLinkTap,
-                  ),
-                  _MemoSection(
-                    memos: memos,
-                    isOpen: _memoOpen,
-                    onToggle: () => setState(() => _memoOpen = !_memoOpen),
-                    onEdit: _openEditMemo,
-                    onDelete: _deleteMemo,
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
+              if (book.status == 'reading' && book.totalPages > 0)
+                _ProgressBar(book: book),
+              // メモ一覧（Firestoreからリアルタイム）
+              _MemoSection(
+                memos: memos,
+                isOpen: _memoOpen,
+                onToggle: () => setState(() => _memoOpen = !_memoOpen),
+                onEdit: _openEditMemo,
+                onDelete: _deleteMemo,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -495,7 +492,8 @@ class _CardActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+    // タイトル・状態タグとの間を少し空ける
+    padding: const EdgeInsets.only(top: 10),
     child: Wrap(
       spacing: 8,
       runSpacing: 6,
