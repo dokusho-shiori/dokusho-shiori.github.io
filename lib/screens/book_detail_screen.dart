@@ -7,12 +7,36 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/book.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive_nav.dart';
+import '../utils/cover_image.dart';
+import '../utils/link_utils.dart';
+import '../utils/url_utils.dart';
 import 'book_form_screen.dart';
 import 'memo_form_screen.dart';
 
-class BookDetailScreen extends StatelessWidget {
+class BookDetailScreen extends StatefulWidget {
   final Book book;
-  const BookDetailScreen({super.key, required this.book});
+  /// true のとき、開いた直後にメモ一覧の位置まで自動で移動する
+  final bool scrollToMemos;
+  const BookDetailScreen({super.key, required this.book, this.scrollToMemos = false});
+
+  @override
+  State<BookDetailScreen> createState() => _BookDetailScreenState();
+}
+
+class _BookDetailScreenState extends State<BookDetailScreen> {
+  // メモ一覧の位置（上の「メモを見る」ボタンで移動する先）
+  final _memoSectionKey = GlobalKey();
+
+  void _scrollToMemos() {
+    final target = _memoSectionKey.currentContext;
+    if (target == null) return;
+    Scrollable.ensureVisible(
+      target,
+      alignment: 0.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
 
   String _statusLabel(String status) {
     switch (status) {
@@ -51,6 +75,7 @@ class BookDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final book = widget.book;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null && book.id.isNotEmpty) {
       return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -74,6 +99,8 @@ class BookDetailScreen extends StatelessWidget {
       backgroundColor: AppTheme.bg,
       appBar: AppBar(
         backgroundColor: AppTheme.headerBg,
+        // 左上は「戻る」矢印ではなく「閉じる」×にする
+        leading: const CloseButton(color: Colors.white),
         title: const Text('本の詳細',
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -83,6 +110,8 @@ class BookDetailScreen extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 800),
           child: ListView(
             padding: const EdgeInsets.all(16),
+            // メモ一覧まで先に組み立てておく（「メモを見る」で確実にその位置へ移動するため）
+            cacheExtent: 3000,
         children: [
           // カバー＋タイトルエリア
           Row(
@@ -99,9 +128,10 @@ class BookDetailScreen extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: b.thumbnail != null
-                      ? Image.network(b.thumbnail!, fit: BoxFit.cover,
+                      ? CoverNetworkImage(
                           key: ValueKey(b.thumbnail),
-                          errorBuilder: (_, __, ___) => _Cover())
+                          url: b.thumbnail!, fit: BoxFit.cover,
+                          placeholderBuilder: (_) => _Cover())
                       : _Cover(),
                 ),
               ),
@@ -162,6 +192,27 @@ class BookDetailScreen extends StatelessWidget {
               ),
             ),
           ],
+          // 関連リンク（NotionなどのURL）
+          if (normalizeLinkUrl(b.linkUrl) != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => openExternalUrl(normalizeLinkUrl(b.linkUrl)!),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  side: const BorderSide(color: AppTheme.gold, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text('🔗 ${linkOpenLabel(b.linkUrl!)}',
+                  style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+          // メモを見る（メモがある本だけ表示。押すと下のメモ一覧まで移動）
+          _MemoJumpButton(bookId: b.id, onTap: _scrollToMemos),
           const SizedBox(height: 20),
 
           // ④ 編集画面の順番に合わせる
@@ -282,10 +333,10 @@ class BookDetailScreen extends StatelessWidget {
           const SizedBox(height: 12),
 
           // 読書メモ一覧（Firestore）
-          _MemoList(book: b),
+          _MemoList(key: _memoSectionKey, book: b, autoScroll: widget.scrollToMemos),
           const SizedBox(height: 32),
 
-          // 戻る・編集ボタン
+          // 閉じる・編集ボタン
           Row(
             children: [
               Expanded(
@@ -296,7 +347,7 @@ class BookDetailScreen extends StatelessWidget {
                     side: const BorderSide(color: AppTheme.border, width: 1.5),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text('戻る',
+                  child: const Text('閉じる',
                     style: TextStyle(fontSize: 16, color: AppTheme.textPrimary,
                       fontWeight: FontWeight.w600)),
                 ),
@@ -322,6 +373,48 @@ class BookDetailScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// 本の詳細の上部に出す「メモを見る（件数）」ボタン。メモがある本にだけ表示する
+class _MemoJumpButton extends StatelessWidget {
+  final String bookId;
+  final VoidCallback onTap;
+  const _MemoJumpButton({required this.bookId, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || bookId.isEmpty) return const SizedBox();
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users').doc(uid)
+          .collection('books').doc(bookId)
+          .collection('memos')
+          .snapshots(),
+      builder: (context, snapshot) {
+        final count = snapshot.data?.docs.length ?? 0;
+        if (count == 0) return const SizedBox();
+        return Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: onTap,
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                side: const BorderSide(color: AppTheme.border, width: 1.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text('📝 メモを見る（$count件）',
+                style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary,
+                  fontWeight: FontWeight.w600)),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -381,7 +474,9 @@ class _InfoRow extends StatelessWidget {
 
 class _MemoList extends StatefulWidget {
   final Book book;
-  const _MemoList({required this.book});
+  /// true のとき、メモが読み込めたらこの位置まで一度だけ自動で移動する
+  final bool autoScroll;
+  const _MemoList({super.key, required this.book, this.autoScroll = false});
 
   @override
   State<_MemoList> createState() => _MemoListState();
@@ -391,6 +486,22 @@ class _MemoListState extends State<_MemoList> {
   // ローカルで順序を保持しドラッグ後のチラつきを防ぐ
   List<QueryDocumentSnapshot> _sortedMemos = [];
   bool _isReordering = false;
+  bool _didAutoScroll = false;
+
+  // メモ一覧の先頭が画面の上に来るように移動する（開いた直後に一度だけ）
+  void _scheduleAutoScroll() {
+    if (!widget.autoScroll || _didAutoScroll) return;
+    _didAutoScroll = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Scrollable.ensureVisible(
+        context,
+        alignment: 0.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
 
   static List<QueryDocumentSnapshot> _sortMemos(List<QueryDocumentSnapshot> list) {
     final sorted = List<QueryDocumentSnapshot>.from(list);
@@ -475,6 +586,7 @@ class _MemoListState extends State<_MemoList> {
         }
 
         if (_sortedMemos.isEmpty) return const SizedBox();
+        _scheduleAutoScroll();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

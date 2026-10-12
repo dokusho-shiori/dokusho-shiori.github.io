@@ -6,6 +6,7 @@ import '../models/category.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive_nav.dart';
+import '../utils/link_utils.dart';
 import 'book_detail_screen.dart';
 import 'settings_screen.dart';
 
@@ -29,6 +30,7 @@ class _BookFormScreenState extends State<BookFormScreen> {
   final _priceController = TextEditingController();
   final _memoController = TextEditingController();
   final _tagController = TextEditingController();
+  final _linkController = TextEditingController();
 
   String _status = 'wish';
   String? _coverUrl;
@@ -56,6 +58,7 @@ class _BookFormScreenState extends State<BookFormScreen> {
       _currentPageController.text = b.currentPage > 0 ? '${b.currentPage}' : '';
       _priceController.text = b.price > 0 ? '${b.price}' : '';
       _memoController.text = b.memo ?? '';
+      _linkController.text = b.linkUrl ?? '';
       _isbnController.text = b.isbn ?? '';
       _asinController.text = b.asin ?? '';
       _status = b.status;
@@ -80,7 +83,8 @@ class _BookFormScreenState extends State<BookFormScreen> {
     for (final c in [
       _isbnController, _asinController, _titleController,
       _authorController, _publisherController, _pagesController,
-      _currentPageController, _priceController, _memoController, _tagController
+      _currentPageController, _priceController, _memoController, _tagController,
+      _linkController
     ]) { c.dispose(); }
     super.dispose();
   }
@@ -226,6 +230,12 @@ class _BookFormScreenState extends State<BookFormScreen> {
   Future<void> _save() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return _snack('タイトルを入力してください');
+    // 関連リンク：空欄ならなし。入力があるときは http(s) のURLだけ受け付ける
+    final linkText = _linkController.text.trim();
+    final linkUrl = normalizeLinkUrl(linkText);
+    if (linkText.isNotEmpty && linkUrl == null) {
+      return _snack('関連リンクは https:// で始まるURLを入力してください');
+    }
     setState(() => _isSaving = true);
     try {
       final now = DateTime.now();
@@ -248,6 +258,7 @@ class _BookFormScreenState extends State<BookFormScreen> {
         purchaseLocation: _purchaseLocation,
         categoryId: _categoryId,
         endDate: _endDate,
+        linkUrl: linkUrl,
         sortOrder: widget.book?.sortOrder ?? 0,
         createdAt: widget.book?.createdAt ?? now,
         updatedAt: now,
@@ -475,6 +486,13 @@ class _BookFormScreenState extends State<BookFormScreen> {
               alignLabelWithHint: true,
             ),
           ),
+          const SizedBox(height: 14),
+
+          // 関連リンク（NotionなどのURL）
+          _FormField(label: '関連リンク（NotionなどのURL）', controller: _linkController,
+              hint: '例：https://www.notion.so/...', inputType: TextInputType.url),
+          const SizedBox(height: 4),
+          const _Note(text: '読書ノートやブログ記事など、この本に関係するページを1つ登録できます'),
           const SizedBox(height: 14),
 
           // 購入場所

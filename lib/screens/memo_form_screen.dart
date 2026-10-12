@@ -187,6 +187,8 @@ class _MemoFormScreenState extends State<MemoFormScreen> {
     return Scaffold(
       backgroundColor: AppTheme.bg,
       appBar: AppBar(
+        // 左上は「戻る」矢印ではなく「閉じる」×にする
+        leading: const CloseButton(color: Colors.white),
         backgroundColor: AppTheme.headerBg,
         title: Text(_isEdit ? '✏️ メモを編集' : widget.isCopy ? '📋 メモをコピー' : '📝 メモを追加',
           style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
@@ -314,7 +316,7 @@ class _MemoFormScreenState extends State<MemoFormScreen> {
                     side: const BorderSide(color: AppTheme.border, width: 1.5),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text('戻る',
+                  child: const Text('閉じる',
                     style: TextStyle(fontSize: 16, color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
                 ),
               ),

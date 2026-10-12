@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,21 +45,19 @@ class ShioriApp extends StatelessWidget {
       locale: const Locale('ja', 'JP'),
 
       home: FirebaseAuth.instance.currentUser != null
-          ? const HomeScreen()
+          ? const SplashGate(child: HomeScreen())
           : StreamBuilder<User?>(
               stream: FirebaseAuth.instance.authStateChanges(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(
-                    backgroundColor: AppTheme.headerBg,
-                    body: Center(
-                      child: CircularProgressIndicator(color: AppTheme.gold),
-                    ),
-                  );
+                  return const SplashScreen();
                 }
-                return snapshot.hasData
-                    ? const HomeScreen()
-                    : const WelcomeScreen();
+                return SplashGate(
+                  key: ValueKey(snapshot.hasData),
+                  child: snapshot.hasData
+                      ? const HomeScreen()
+                      : const WelcomeScreen(),
+                );
               },
             ),
     );

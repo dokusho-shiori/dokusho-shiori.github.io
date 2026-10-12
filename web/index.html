@@ -11,10 +11,46 @@
   <meta name="apple-mobile-web-app-title" content="shiori">
   <link rel="apple-touch-icon" href="icons/Icon-192.jpg">
   <link rel="icon" type="image/jpeg" href="favicon.jpg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
   <title>栞</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { background: #F6F0E4; }
+    #app-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #F6F0E4;
+      z-index: 9999;
+      animation: appSplashIn 700ms ease-out;
+    }
+    #app-splash img {
+      width: 168px;
+      height: 168px;
+    }
+    @keyframes appSplashIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 <body>
+  <div id="app-splash"><img src="splash_logo.png" alt="栞"></div>
+  <script>
+    (function () {
+      function removeSplash() {
+        var el = document.getElementById('app-splash');
+        if (el) el.remove();
+      }
+      window.addEventListener('flutter-first-frame', removeSplash);
+      // 万一イベントが発火しない場合の保険
+      setTimeout(removeSplash, 4000);
+    })();
+  </script>
   <script>
     window._deferredInstallPrompt = null;
     window.addEventListener('beforeinstallprompt', function(e) {

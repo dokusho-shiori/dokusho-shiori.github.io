@@ -23,6 +23,8 @@ class Book {
   final String? purchaseLocation;
   final String? categoryId;
   final String? notionPageId;
+  /// 関連リンク（NotionなどのURL）。未登録なら null。
+  final String? linkUrl;
 
   Book({
     required this.id,
@@ -47,6 +49,7 @@ class Book {
     this.purchaseLocation,
     this.categoryId,
     this.notionPageId,
+    this.linkUrl,
   });
 
   double get progress {
@@ -74,6 +77,7 @@ class Book {
     'purchaseLocation': purchaseLocation,
     'categoryId': categoryId,
     'notionPageId': notionPageId,
+    'linkUrl': linkUrl,
     'createdAt': Timestamp.fromDate(createdAt),
     'updatedAt': Timestamp.fromDate(updatedAt),
   };
@@ -99,6 +103,7 @@ class Book {
     purchaseLocation: map['purchaseLocation'],
     categoryId: map['categoryId'],
     notionPageId: map['notionPageId'],
+    linkUrl: map['linkUrl'] as String?,
     createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
   );
@@ -124,6 +129,7 @@ class Book {
     String? purchaseLocation,
     String? categoryId,
     String? notionPageId,
+    String? linkUrl,
   }) => Book(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -145,6 +151,7 @@ class Book {
     purchaseLocation: purchaseLocation ?? this.purchaseLocation,
     categoryId: categoryId ?? this.categoryId,
     notionPageId: notionPageId ?? this.notionPageId,
+    linkUrl: linkUrl ?? this.linkUrl,
     createdAt: createdAt,
     updatedAt: DateTime.now(),
   );

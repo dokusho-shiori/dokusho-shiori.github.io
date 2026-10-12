@@ -1,0 +1,76 @@
+# 公開前の動作チェック
+# main 以外の枝（作業用ブランチ）にアップしたとき、
+# プログラムの解析・テスト・ビルドだけを行う。公開（デプロイ）はしない。
+name: Check (no deploy)
+
+on:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter --version
+
+      - run: flutter pub get
+
+      # エラーがあれば止める（注意・情報レベルの指摘では止めない）
+      # 見つかったエラーは、実行結果の一覧にも1件ずつ表示する
+      # ※ pwa_install_web.dart の dart:js_util は以前からある指摘で、
+      #    Web向けのビルドは通るため、ここでは注意として表示するだけにする
+      - name: flutter analyze
+        run: |
+          flutter analyze --no-fatal-infos --no-fatal-warnings > analyze.txt 2>&1 || true
+          cat analyze.txt
+          known='lib/utils/pwa_install_web.dart'
+          grep -E '^\s*error' analyze.txt | grep -F "$known" | head -n 5 | while read -r line; do
+            echo "::warning title=flutter analyze（既知）::$line"
+          done
+          errors=$(grep -E '^\s*error' analyze.txt | grep -vF "$known" || true)
+          if [ -n "$errors" ]; then
+            echo "$errors" | head -n 10 | while read -r line; do
+              echo "::error title=flutter analyze::$line"
+            done
+            exit 1
+          fi
+
+      # 前の手順が失敗していても実行し、問題をまとめて把握できるようにする
+      - name: flutter test
+        if: ${{ !cancelled() }}
+        run: |
+          status=0
+          flutter test > test.txt 2>&1 || status=$?
+          cat test.txt
+          if [ $status -ne 0 ]; then
+            msg=$(tail -n 40 test.txt | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=flutter test::$msg"
+          fi
+          exit $status
+
+      # 本番と同じ条件でビルドできるかを確認する
+      - name: flutter build web
+        if: ${{ !cancelled() }}
+        run: |
+          status=0
+          flutter build web --release --base-href /app/ > build.txt 2>&1 || status=$?
+          cat build.txt
+          if [ $status -ne 0 ]; then
+            msg=$(tail -n 40 build.txt | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+            echo "::error title=flutter build web::$msg"
+          fi
+          exit $status
