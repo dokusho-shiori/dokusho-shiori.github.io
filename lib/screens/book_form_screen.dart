@@ -11,6 +11,7 @@ import '../utils/breakpoint.dart';
 import '../utils/cover_image.dart';
 import '../utils/responsive_nav.dart';
 import '../utils/link_utils.dart';
+import 'barcode_scan_screen.dart';
 import 'book_detail_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/screen_app_bar.dart';
@@ -247,6 +248,14 @@ class _BookFormScreenState extends State<BookFormScreen> {
     }
   }
 
+  /// 本の裏のバーコードをカメラで読み、読めたISBNでそのまま情報を取得する。
+  Future<void> _scanBarcode() async {
+    final isbn = await pushResponsive<String>(context, const BarcodeScanScreen());
+    if (isbn == null || !mounted) return;
+    _isbnController.text = isbn;
+    await _fetchBookInfo(isbn);
+  }
+
   Future<void> _fetchISBN() => _fetchBookInfo(_isbnController.text);
   Future<void> _fetchASIN() => _fetchBookInfo(_asinController.text);
 
@@ -385,6 +394,26 @@ class _BookFormScreenState extends State<BookFormScreen> {
             ],
           ),
           const SizedBox(height: 16),
+
+          // バーコードを読んで自動入力
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isFetching ? null : _scanBarcode,
+              icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+              label: const Text('バーコードを読んで自動入力',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.btnRegister,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const _Note(text: '本の裏のバーコードをカメラで読むと、下のISBNと本の情報が入ります'),
+          const SizedBox(height: 14),
 
           // ISBN
           const _Note(text: '📖 ISBN-13　表紙・タイトル・著者・出版社を自動取得'),
