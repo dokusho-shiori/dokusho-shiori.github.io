@@ -14,6 +14,7 @@ import '../theme/app_theme.dart';
 import '../utils/url_utils.dart';
 import '../utils/pwa_install.dart';
 import '../widgets/notion_deleted_dialog.dart';
+import '../widgets/screen_app_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   final bool embedded;
@@ -1371,19 +1372,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (widget.embedded) return body;
     return Scaffold(
       backgroundColor: AppTheme.bg,
-      appBar: AppBar(
-        backgroundColor: AppTheme.headerBg,
-        title: const Text('⚙️ 設定',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          TextButton(
-            onPressed: _save,
-            child: const Text('保存',
-              style: TextStyle(color: AppTheme.gold, fontSize: 16, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+      appBar: buildScreenAppBar(context,
+        title: '⚙️ 設定', actionLabel: '保存', onAction: _save),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),

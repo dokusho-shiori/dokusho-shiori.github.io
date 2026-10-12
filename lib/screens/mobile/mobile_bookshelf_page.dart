@@ -8,31 +8,88 @@ import '../../utils/cover_image.dart';
 import '../book_detail_screen.dart';
 import '../settings_screen.dart';
 
+/// 本棚タブの中身。
+/// ヘッダーは外枠（MobileShell）の固定ヘッダーを使うので、ここには持たない。
+/// 検索の開閉と表示切替は外枠のアイコンから操作されるため、状態を外枠と共有する。
 class MobileBookshelfPage extends StatefulWidget {
-  final String initialFilter;
-  const MobileBookshelfPage({super.key, this.initialFilter = 'all'});
+  final ValueNotifier<bool> searchOpen;   // 検索欄を開いているか
+  final ValueNotifier<String> viewMode;   // grid=表紙グリッド list=リスト
+  const MobileBookshelfPage({
+    super.key,
+    required this.searchOpen,
+    required this.viewMode,
+  });
 
   @override
-  State<MobileBookshelfPage> createState() => _MobileBookshelfPageState();
+  State<MobileBookshelfPage> createState() => MobileBookshelfPageState();
 }
 
-class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
+class MobileBookshelfPageState extends State<MobileBookshelfPage> {
   final _firestoreService = FirestoreService();
   final _searchController = TextEditingController();
 
-  late String _filter = widget.initialFilter;
+  String _filter = 'all';
   String _sort = 'newest';
-  String _viewMode = 'grid'; // grid=表紙グリッド list=リスト
-  bool _searchOpen = false;
   String _searchQuery = '';
+  bool _sheetOpen = false;
+
+  bool get _searchOpen => widget.searchOpen.value;
+  String get _viewMode => widget.viewMode.value;
 
   int _countStatus(List<Book> books, String status) =>
       books.where((b) => b.status == status).length;
 
   @override
+  void initState() {
+    super.initState();
+    widget.searchOpen.addListener(_onSearchOpenChanged);
+    widget.viewMode.addListener(_onViewModeChanged);
+  }
+
+  @override
   void dispose() {
+    widget.searchOpen.removeListener(_onSearchOpenChanged);
+    widget.viewMode.removeListener(_onViewModeChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchOpenChanged() {
+    if (!mounted) return;
+    setState(() {
+      // 検索欄を閉じたら、検索の文字も消す
+      if (!_searchOpen) {
+        _searchQuery = '';
+        _searchController.clear();
+      }
+    });
+  }
+
+  void _onViewModeChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// ホームのタイルなどから「読み中だけ」などを指定して開くとき用。
+  void setFilter(String filter) {
+    widget.searchOpen.value = false;
+    setState(() => _filter = filter);
+  }
+
+  /// 下から出すシート。枠の中に開く。
+  /// すでにシートが開いているときは、それを閉じるだけにする。
+  Future<void> _openSheet(WidgetBuilder builder) async {
+    final nav = Navigator.of(context);
+    nav.popUntil((route) => route is PageRoute);
+    if (_sheetOpen) return;
+    _sheetOpen = true;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: MobileTheme.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: builder,
+    );
+    _sheetOpen = false;
   }
 
   List<Book> _applyFilterSort(List<Book> books) {
@@ -75,7 +132,7 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
     }
   }
 
-  void _showSortSheet() {
+  void showSortSheet() {
     const sorts = [
       {'val': 'manual',   'label': '手動順'},
       {'val': 'newest',   'label': '登録新しい順'},
@@ -85,12 +142,8 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
       {'val': 'status',   'label': '状態別'},
       {'val': 'progress', 'label': '進捗順'},
     ];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: MobileTheme.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => ListView(
+    _openSheet(
+      (_) => ListView(
         shrinkWrap: true,
         children: sorts.map((s) => ListTile(
           title: Text(s['label']!, style: MobileTheme.body(fontSize: 15, fontWeight: FontWeight.w600)),
@@ -106,13 +159,9 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
     );
   }
 
-  void _showMoreSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: MobileTheme.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SafeArea(
+  void showMoreSheet() {
+    _openSheet(
+      (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -139,66 +188,26 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
   Widget build(BuildContext context) {
     return Container(
       color: MobileTheme.bg,
-      child: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: StreamBuilder<List<Book>>(
-              stream: _firestoreService.booksStream(),
-              builder: (context, snapshot) {
-                final allBooks = snapshot.data ?? [];
-                final displayed = _applyFilterSort(allBooks);
-                return Column(
-                  children: [
-                    _buildStatusTabs(allBooks),
-                    if (_searchOpen) _buildSearchBar(),
-                    Expanded(
-                      child: displayed.isEmpty
-                          ? Center(
-                              child: Text('本がまだありません',
-                                style: MobileTheme.body(fontSize: 13, color: MobileTheme.textSub)),
-                            )
-                          : (_viewMode == 'grid' ? _buildGrid(displayed) : _buildList(displayed)),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return SafeArea(
-      bottom: false,
-      child: Container(
-        height: 56,
-        color: MobileTheme.dark,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          children: [
-            Text('本棚', style: MobileTheme.heading(fontSize: 16, color: Colors.white)),
-            const Spacer(),
-            _HeaderIcon(
-              icon: _searchOpen ? Icons.close : Icons.search_rounded,
-              onTap: () => setState(() {
-                _searchOpen = !_searchOpen;
-                if (!_searchOpen) {
-                  _searchQuery = '';
-                  _searchController.clear();
-                }
-              }),
-            ),
-            _HeaderIcon(icon: Icons.swap_vert_rounded, onTap: _showSortSheet),
-            _HeaderIcon(
-              icon: _viewMode == 'grid' ? Icons.view_list_rounded : Icons.grid_view_rounded,
-              onTap: () => setState(() => _viewMode = _viewMode == 'grid' ? 'list' : 'grid'),
-            ),
-            _HeaderIcon(icon: Icons.more_horiz_rounded, onTap: _showMoreSheet),
-          ],
-        ),
+      child: StreamBuilder<List<Book>>(
+        stream: _firestoreService.booksStream(),
+        builder: (context, snapshot) {
+          final allBooks = snapshot.data ?? [];
+          final displayed = _applyFilterSort(allBooks);
+          return Column(
+            children: [
+              _buildStatusTabs(allBooks),
+              if (_searchOpen) _buildSearchBar(),
+              Expanded(
+                child: displayed.isEmpty
+                    ? Center(
+                        child: Text('本がまだありません',
+                          style: MobileTheme.body(fontSize: 13, color: MobileTheme.textSub)),
+                      )
+                    : (_viewMode == 'grid' ? _buildGrid(displayed) : _buildList(displayed)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -382,26 +391,4 @@ class _MobileBookshelfPageState extends State<MobileBookshelfPage> {
   Widget _coverPlaceholder() => Container(
     color: MobileTheme.cardBorder,
     child: const Center(child: Text('📖', style: TextStyle(fontSize: 18))));
-}
-
-class _HeaderIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _HeaderIcon({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 44, height: 44,
-          alignment: Alignment.center,
-          child: Icon(icon, color: MobileTheme.goldOnDark, size: 22),
-        ),
-      ),
-    );
-  }
 }

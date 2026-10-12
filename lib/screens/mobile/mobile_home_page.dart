@@ -6,6 +6,7 @@ import '../../services/firestore_service.dart';
 import '../../theme/mobile_theme.dart';
 import '../../utils/cover_image.dart';
 
+/// ホームタブの中身。ヘッダーは外枠（MobileShell）の固定ヘッダーを使う。
 class MobileHomePage extends StatelessWidget {
   final void Function(String filter) onOpenBookshelf;
   final void Function(Book book) onOpenBookDetail;
@@ -20,52 +21,26 @@ class MobileHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: MobileTheme.bg,
-      child: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: StreamBuilder<List<Book>>(
-              stream: FirestoreService().booksStream(),
-              builder: (context, snapshot) {
-                final books = snapshot.data ?? [];
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-                  children: [
-                    _ReadingSection(
-                      books: books,
-                      onSeeAll: () => onOpenBookshelf('reading'),
-                      onPickFromShelf: () => onOpenBookshelf('all'),
-                      onOpenBookDetail: onOpenBookDetail,
-                    ),
-                    const SizedBox(height: 28),
-                    _ShelfCountsSection(books: books, onOpenBookshelf: onOpenBookshelf),
-                    const SizedBox(height: 28),
-                    _RecentMemosSection(books: books, onOpenBookDetail: onOpenBookDetail),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return SafeArea(
-      bottom: false,
-      child: Container(
-        height: 56,
-        color: MobileTheme.dark,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.centerLeft,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.asset(
-            'assets/images/shiori_logo.png',
-            width: 32, height: 32, fit: BoxFit.cover,
-          ),
-        ),
+      child: StreamBuilder<List<Book>>(
+        stream: FirestoreService().booksStream(),
+        builder: (context, snapshot) {
+          final books = snapshot.data ?? [];
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+            children: [
+              _ReadingSection(
+                books: books,
+                onSeeAll: () => onOpenBookshelf('reading'),
+                onPickFromShelf: () => onOpenBookshelf('all'),
+                onOpenBookDetail: onOpenBookDetail,
+              ),
+              const SizedBox(height: 28),
+              _ShelfCountsSection(books: books, onOpenBookshelf: onOpenBookshelf),
+              const SizedBox(height: 28),
+              _RecentMemosSection(books: books, onOpenBookDetail: onOpenBookDetail),
+            ],
+          );
+        },
       ),
     );
   }
