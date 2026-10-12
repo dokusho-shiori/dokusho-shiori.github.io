@@ -6,8 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
-import 'screens/welcome_screen.dart';
-import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -44,22 +42,8 @@ class ShioriApp extends StatelessWidget {
       ],
       locale: const Locale('ja', 'JP'),
 
-      home: FirebaseAuth.instance.currentUser != null
-          ? const SplashGate(child: HomeScreen())
-          : StreamBuilder<User?>(
-              stream: FirebaseAuth.instance.authStateChanges(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SplashScreen();
-                }
-                return SplashGate(
-                  key: ValueKey(snapshot.hasData),
-                  child: snapshot.hasData
-                      ? const HomeScreen()
-                      : const WelcomeScreen(),
-                );
-              },
-            ),
+      // ロゴの表示と、ホーム／ログイン画面への切り替えは AuthGate がまとめて行う
+      home: const AuthGate(),
     );
   }
 }
