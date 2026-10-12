@@ -177,8 +177,6 @@ class _BookCardState extends State<BookCard> {
                           borderRadius: BorderRadius.circular(3)),
                       ),
                       const SizedBox(width: 12),
-                      _CoverImage(book: book),
-                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,16 +205,27 @@ class _BookCardState extends State<BookCard> {
                                   fontSize: kIsWeb ? 12 : 10, color: AppTheme.textSecondary, height: 1.5),
                                 maxLines: 1, overflow: TextOverflow.ellipsis),
                             ],
-                            // アクションボタン（表紙の右隣・タイトルや状態の下）
-                            _CardActions(
-                              onDetail: widget.onDetail ?? () => pushResponsive(context, BookDetailScreen(book: widget.book)),
-                              onEdit: widget.onTap,
-                              onDelete: widget.onDelete,
-                              onAddMemo: widget.onAddMemo,
-                              memoCount: memos.length,
-                              onViewMemos: _openMemos,
-                              linkUrl: normalizeLinkUrl(book.linkUrl),
-                              onLink: _onLinkTap,
+                            const SizedBox(height: 10),
+                            // 表紙とアクションボタンを横並びにする。
+                            // 表紙の上端を「本の詳細」ボタンの上端にそろえる
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _CoverImage(book: book),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _CardActions(
+                                    onDetail: widget.onDetail ?? () => pushResponsive(context, BookDetailScreen(book: widget.book)),
+                                    onEdit: widget.onTap,
+                                    onDelete: widget.onDelete,
+                                    onAddMemo: widget.onAddMemo,
+                                    memoCount: memos.length,
+                                    onViewMemos: _openMemos,
+                                    linkUrl: normalizeLinkUrl(book.linkUrl),
+                                    onLink: _onLinkTap,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -492,8 +501,7 @@ class _CardActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    // タイトル・状態タグとの間を少し空ける
-    padding: const EdgeInsets.only(top: 10),
+    padding: EdgeInsets.zero,
     child: Wrap(
       spacing: 8,
       runSpacing: 6,
