@@ -219,6 +219,10 @@ h2{font-family:var(--serif);font-weight:700;font-size:clamp(25px,2.8vw,36px);lin
 .sd-fab svg{width:18px;height:18px;fill:#fff}
 .sd-fabmenu{position:absolute;right:14px;bottom:66px;display:grid;gap:6px}
 .sd-fabmenu .sd-top{font-size:11px;padding:8px 12px;box-shadow:0 3px 8px rgba(26,16,6,.3)}
+.sd-x{font-size:22px}
+.sd-wide{display:block;width:100%;margin-top:12px;border-radius:8px;font-size:11px;text-align:center;padding:8px}
+.sd-memo-acts{display:flex;justify-content:flex-end;margin-top:2px}
+.sd-link{background:none;border:0;color:#8A6508;font-size:10px;font-weight:700;padding:3px 4px}
 .sd-toast{position:absolute;left:12px;right:12px;bottom:14px;z-index:2;background:rgba(26,16,6,.94);color:#fff;border-radius:8px;font-size:11px;line-height:1.6;padding:9px 12px;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none}
 .sd-toast.is-on{opacity:1;transform:none}
 .sd button:focus-visible,.sd input:focus-visible,.sd select:focus-visible,.sd textarea:focus-visible{outline:2px solid var(--sd-gold-l);outline-offset:1px}
@@ -309,7 +313,7 @@ h2{font-family:var(--serif);font-weight:700;font-size:clamp(25px,2.8vw,36px);lin
         <div class="speaker" aria-hidden="true"></div>
         <div class="sd" id="sd" aria-label="栞の体験版"><div class="sd-screen"></div><div class="sd-toast" role="status"></div></div>
       </div>
-      <p class="demo-note">スマホの中をクリック・タップしてみてください。<br>本の登録やメモの追加も試せます。体験版のため内容は保存されません。<br>全機能の利用は<a href="https://dokusho-shiori.com/app/">栞を開いて</a>行ってください。</p>
+      <p class="demo-note">スマホの中をクリック・タップしてみてください。<br>本の登録やメモの追加も試せます。編集は画面を開くところまでで、内容は保存されません。<br>全機能の利用は<a href="https://dokusho-shiori.com/app/">栞を開いて</a>行ってください。</p>
     </div>
   </section>
 
@@ -484,7 +488,7 @@ h2{font-family:var(--serif);font-weight:700;font-size:clamp(25px,2.8vw,36px);lin
     {id:5,title:"風邪の効用",author:"野口晴哉",publisher:"ちくま文庫",pages:0,page:0,price:0,status:"wish",tags:[],cover:"covers/kaze.jpg",note:"",memos:[]},
     {id:6,title:"人望の研究",author:"山本七平",publisher:"祥伝社",pages:0,page:0,price:0,status:"done",tags:[],cover:"covers/jinbou.jpg",note:"",memos:[]}
   ];
-  var st={view:"home",tab:"all",mode:"grid",sort:"manual",search:false,q:"",fab:false,bookId:null,memoBook:null,err:""};
+  var st={view:"home",tab:"all",mode:"grid",sort:"manual",search:false,q:"",fab:false,bookId:null,memoBook:null,editBook:null,editMemo:null,back:"home",toMemos:false};
 
   function h(v){return String(v).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
   function find(id){for(var i=0;i<books.length;i++)if(books[i].id===id)return books[i];return null}
@@ -525,8 +529,8 @@ h2{font-family:var(--serif);font-weight:700;font-size:clamp(25px,2.8vw,36px);lin
         '<div><div class="sd-title">「'+h(b.title)+'」</div><div class="sd-meta">'+h([b.author,b.publisher].filter(Boolean).join(" / "))+'</div>'+
         '<div class="sd-chips"><span class="sd-chip">'+STATUS[b.status]+'</span>'+b.tags.map(function(t){return '<span class="sd-chip">'+h(t)+'</span>'}).join("")+'</div>'+
         (b.note?'<p class="sd-note">'+h(b.note)+'</p>':"")+'</div></div>'+prog+
-        '<div class="sd-btns"><button type="button" class="sd-btn" data-act="detail" data-id="'+b.id+'">本の詳細</button><button type="button" class="sd-btn" data-act="memo" data-id="'+b.id+'">メモの追加</button></div>'+
-        '<p class="sd-note">📝 メモ一覧（'+b.memos.length+'件）</p></article>';
+        '<div class="sd-btns"><button type="button" class="sd-btn" data-act="detail" data-id="'+b.id+'">本の詳細</button><button type="button" class="sd-btn" data-act="edit-book" data-id="'+b.id+'">本の編集</button><button type="button" class="sd-btn" data-act="memo" data-id="'+b.id+'">メモの追加</button>'+
+        (b.memos.length?'<button type="button" class="sd-btn" data-act="memos" data-id="'+b.id+'">メモを見る（'+b.memos.length+'）</button>':"")+'</div></article>';
     }).join("")+'</div>';
   }
 
@@ -572,47 +576,60 @@ h2{font-family:var(--serif);font-weight:700;font-size:clamp(25px,2.8vw,36px);lin
     if(b.price)rows.push(["金額","¥"+b.price]);
     rows.push(["読書状態",STATUS[b.status]]);
     if(b.pages)rows.push(["現在のページ","p."+b.page]);
-    return '<div class="sd-head"><button type="button" class="sd-back" data-act="home" aria-label="本棚に戻る">←</button><b>本の詳細</b></div><div class="sd-body">'+
+    return '<div class="sd-head"><button type="button" class="sd-back sd-x" data-act="home" aria-label="閉じる">×</button><b>本の詳細</b></div><div class="sd-body">'+
       '<div class="sd-row">'+cover(b,"sd-thumb sd-cover")+'<div><div class="sd-title" style="font-size:14px">'+h(b.title)+'</div><div class="sd-meta">'+h(b.author)+'</div><div class="sd-meta">'+h(b.publisher)+'</div><div class="sd-chips"><span class="sd-chip">'+STATUS[b.status]+'</span></div></div></div>'+
+      (b.memos.length?'<button type="button" class="sd-btn sd-wide" data-act="to-memos">📝 メモを見る（'+b.memos.length+'件）</button>':"")+
       '<section class="sd-card" style="margin-top:12px"><h5>書誌情報</h5><dl class="sd-dl">'+rows.filter(function(r){return r[1]}).map(function(r){return '<dt>'+r[0]+'</dt><dd>'+h(r[1])+'</dd>'}).join("")+'</dl></section>'+
       (b.pages?'<section class="sd-card" style="margin-top:10px"><div class="sd-progress" style="margin:0"><p><span>読書進捗</span><span>p.'+b.page+' / '+b.pages+'（'+pct(b)+'%）</span></p><div class="sd-track"><i style="width:'+pct(b)+'%"></i></div></div></section>':"")+
       (b.tags.length?'<section class="sd-card" style="margin-top:10px"><h5>タグ</h5><div class="sd-chips" style="margin:0">'+b.tags.map(function(t){return '<span class="sd-chip">'+h(t)+'</span>'}).join("")+'</div></section>':"")+
-      '<section class="sd-card" style="margin-top:10px"><h5>📝 読書メモ（'+b.memos.length+'件）</h5>'+
-      (b.memos.length?b.memos.map(function(m){
-        var chips=(m.page?'<span class="sd-chip">p.'+h(m.page)+'</span>':"")+(m.type?'<span class="sd-chip">'+h(m.type)+'</span>':"")+(m.tag?'<span class="sd-chip">'+h(m.tag)+'</span>':"");
-        return '<div class="sd-memo">'+(chips?'<div class="sd-chips" style="margin:0">'+chips+'</div>':"")+'<p>'+h(m.text)+'</p></div>';
+      '<section class="sd-card" id="sd-memos" style="margin-top:10px"><h5>📝 読書メモ（'+b.memos.length+'件）</h5>'+
+      (b.memos.length?b.memos.map(function(m,i){
+        var chips=(m.type?'<span class="sd-chip">'+h(m.type)+'</span>':"")+(m.page?'<span class="sd-chip">p.'+h(m.page)+'</span>':"")+(m.tag?'<span class="sd-chip">'+h(m.tag)+'</span>':"");
+        return '<div class="sd-memo">'+(chips?'<div class="sd-chips" style="margin:0">'+chips+'</div>':"")+'<p>'+h(m.text)+'</p><div class="sd-memo-acts"><button type="button" class="sd-link" data-act="edit-memo" data-i="'+i+'">✏ 編集</button></div></div>';
       }).join(""):'<p class="sd-note" style="margin:0">メモはまだありません。</p>')+
-      '<div class="sd-btns"><button type="button" class="sd-btn sd-btn-main" data-act="memo" data-id="'+b.id+'">📝 メモの追加</button></div></section></div>';
+      '<div class="sd-btns"><button type="button" class="sd-btn" data-act="memo" data-id="'+b.id+'">📝 メモの追加</button></div></section>'+
+      '<div class="sd-two" style="margin-top:16px"><button type="button" class="sd-btn" data-act="home">閉じる</button><button type="button" class="sd-btn sd-btn-main" data-act="edit-book" data-id="'+b.id+'">編集</button></div></div>';
   }
 
   function registerHtml(){
-    return '<div class="sd-head"><button type="button" class="sd-back" data-act="home" aria-label="本棚に戻る">←</button><b>📚 本を登録</b></div><div class="sd-body"><form id="sd-book-form" novalidate>'+
+    var b=st.editBook?find(st.editBook):null;
+    function v(x){return b&&x?' value="'+h(x)+'"':""}
+    function on(k){return b&&b.status===k?" selected":""}
+    return '<div class="sd-head"><button type="button" class="sd-back" data-act="form-close" aria-label="戻る">←</button><b>'+(b?"✏️ 本を編集":"📚 本を登録")+'</b></div><div class="sd-body"><form id="sd-book-form" novalidate>'+
       '<p class="sd-hint">📖 ISBN-13　表紙・タイトル・著者・出版社を自動取得</p>'+
       '<div class="sd-field sd-inline"><input type="text" id="sd-isbn" inputmode="numeric" placeholder="例：978-4-16-711012-3" aria-label="ISBN"><button type="button" class="sd-btn-gold" data-act="fetch">取得</button></div>'+
-      (st.err?'<p class="sd-error" role="alert">'+h(st.err)+'</p>':"")+
-      '<div class="sd-field"><label for="sd-b-title">タイトル *</label><input type="text" id="sd-b-title" maxlength="60" placeholder="例：思考の整理学"></div>'+
-      '<div class="sd-field"><label for="sd-b-author">著者名</label><input type="text" id="sd-b-author" maxlength="40" placeholder="例：外山滋比古"></div>'+
-      '<div class="sd-field"><label for="sd-b-pub">出版社</label><input type="text" id="sd-b-pub" maxlength="40" placeholder="例：ちくま文庫"></div>'+
-      '<div class="sd-field"><label for="sd-b-pages">総ページ数</label><input type="text" id="sd-b-pages" inputmode="numeric" maxlength="5" placeholder="例：200"></div>'+
-      '<div class="sd-field"><label for="sd-b-status">読書状態</label><select id="sd-b-status"><option value="wish">🌙 読みたい</option><option value="reading">📖 読み中</option><option value="stack">📚 積読</option><option value="done">✅ 読了</option></select></div>'+
-      '<div class="sd-two"><button type="button" class="sd-btn" data-act="home">戻る</button><button type="submit" class="sd-btn sd-btn-main">登録する</button></div></form></div>';
+      '<div class="sd-field"><label for="sd-b-title">タイトル *</label><input type="text" id="sd-b-title" maxlength="60" placeholder="例：思考の整理学"'+v(b&&b.title)+'></div>'+
+      '<div class="sd-field"><label for="sd-b-author">著者名</label><input type="text" id="sd-b-author" maxlength="40" placeholder="例：外山滋比古"'+v(b&&b.author)+'></div>'+
+      '<div class="sd-field"><label for="sd-b-pub">出版社</label><input type="text" id="sd-b-pub" maxlength="40" placeholder="例：ちくま文庫"'+v(b&&b.publisher)+'></div>'+
+      '<div class="sd-field"><label for="sd-b-pages">総ページ数</label><input type="text" id="sd-b-pages" inputmode="numeric" maxlength="5" placeholder="例：200"'+v(b&&b.pages)+'></div>'+
+      '<div class="sd-field"><label for="sd-b-status">読書状態</label><select id="sd-b-status"><option value="wish"'+on("wish")+'>🌙 読みたい</option><option value="reading"'+on("reading")+'>📖 読み中</option><option value="stack"'+on("stack")+'>📚 積読</option><option value="done"'+on("done")+'>✅ 読了</option></select></div>'+
+      (b&&b.pages?'<div class="sd-field"><label for="sd-b-page">現在のページ</label><input type="text" id="sd-b-page" inputmode="numeric" maxlength="5" placeholder="例：142"'+v(b.page)+'></div>':"")+
+      '<div class="sd-two"><button type="button" class="sd-btn" data-act="form-close">戻る</button><button type="submit" class="sd-btn sd-btn-main">'+(b?"更新する":"登録する")+'</button></div></form></div>';
   }
 
   function memoHtml(){
-    return '<div class="sd-head"><button type="button" class="sd-back" data-act="memo-back" aria-label="戻る">←</button><b>📝 メモを追加</b></div><div class="sd-body"><form id="sd-memo-form" novalidate>'+
-      (st.err?'<p class="sd-error" role="alert">'+h(st.err)+'</p>':"")+
-      '<div class="sd-field"><label for="sd-m-book">本のタイトル *</label><select id="sd-m-book">'+books.map(function(b){return '<option value="'+b.id+'"'+(b.id===st.memoBook?" selected":"")+'>'+h(b.title)+'</option>'}).join("")+'</select></div>'+
-      '<div class="sd-field"><label for="sd-m-page">ページ番号</label><input type="text" id="sd-m-page" inputmode="numeric" maxlength="5" placeholder="例：142"></div>'+
-      '<div class="sd-field"><label for="sd-m-type">メモ種類</label><select id="sd-m-type"><option value="">（なし）</option>'+TYPES.map(function(t){return '<option>'+t+'</option>'}).join("")+'</select></div>'+
-      '<div class="sd-field"><label for="sd-m-tag">重要度タグ</label><select id="sd-m-tag"><option value="">なし</option>'+TAGS.map(function(t){return '<option>'+t+'</option>'}).join("")+'</select></div>'+
-      '<div class="sd-field"><label for="sd-m-text">メモ内容 *</label><textarea id="sd-m-text" maxlength="400" placeholder="ここにメモを書いてください..."></textarea></div>'+
-      '<div class="sd-two"><button type="button" class="sd-btn" data-act="memo-back">戻る</button><button type="submit" class="sd-btn sd-btn-main">保存する</button></div></form></div>';
+    var e=st.editMemo,eb=e?find(e.bookId):null,m=eb?eb.memos[e.i]:null;
+    var cur=m?e.bookId:st.memoBook;
+    function opts(list,now){return list.map(function(t){return '<option'+(t===now?" selected":"")+'>'+t+'</option>'}).join("")}
+    return '<div class="sd-head"><button type="button" class="sd-back sd-x" data-act="form-close" aria-label="閉じる">×</button><b>'+(m?"✏️ メモを編集":"📝 メモを追加")+'</b><button type="submit" form="sd-memo-form" class="sd-save">保存する</button></div><div class="sd-body"><form id="sd-memo-form" novalidate>'+
+      '<div class="sd-field"><label for="sd-m-book">本のタイトル *</label><select id="sd-m-book">'+books.map(function(b){return '<option value="'+b.id+'"'+(b.id===cur?" selected":"")+'>'+h(b.title)+'</option>'}).join("")+'</select></div>'+
+      '<div class="sd-field"><label for="sd-m-page">ページ番号</label><input type="text" id="sd-m-page" inputmode="numeric" maxlength="5" placeholder="例：142"'+(m&&m.page?' value="'+h(m.page)+'"':"")+'></div>'+
+      '<div class="sd-field"><label for="sd-m-type">メモの種類</label><select id="sd-m-type"><option value="">（なし）</option>'+opts(TYPES,m?m.type:"")+'</select></div>'+
+      '<div class="sd-field"><label for="sd-m-tag">重要度タグ</label><select id="sd-m-tag"><option value="">なし</option>'+opts(TAGS,m?m.tag:"")+'</select></div>'+
+      '<div class="sd-field"><label for="sd-m-text">メモ内容 *</label><textarea id="sd-m-text" maxlength="400" placeholder="ここにメモを書いてください…">'+(m?h(m.text):"")+'</textarea></div>'+
+      '<div class="sd-two"><button type="button" class="sd-btn" data-act="form-close">閉じる</button><button type="submit" class="sd-btn sd-btn-main">'+(m?"更新する":"保存する")+'</button></div></form></div>';
   }
 
+  function scrollMemos(){
+    var body=screen.querySelector(".sd-body"),el=document.getElementById("sd-memos");
+    if(body&&el)body.scrollTop=el.getBoundingClientRect().top-body.getBoundingClientRect().top+body.scrollTop-8;
+  }
   function render(){
     screen.innerHTML=st.view==="detail"?detailHtml():st.view==="register"?registerHtml():st.view==="memo"?memoHtml():homeHtml();
     var on=screen.querySelector('.sd-tab[aria-selected="true"]');
     if(on)on.parentNode.scrollLeft=Math.max(0,on.offsetLeft-40);
+    if(st.view==="detail"&&st.toMemos)scrollMemos();
+    st.toMemos=false;
   }
   function val(id){var el=document.getElementById(id);return el?el.value.trim():""}
 
@@ -620,18 +637,21 @@ h2{font-family:var(--serif);font-weight:700;font-size:clamp(25px,2.8vw,36px);lin
     var el=e.target.closest("[data-act]");
     if(!el||!root.contains(el))return;
     var act=el.getAttribute("data-act"),id=Number(el.getAttribute("data-id"));
-    st.err="";
     if(act==="tab"){st.view="home";st.tab=el.getAttribute("data-tab");st.fab=false}
     else if(act==="mode"){st.mode=st.mode==="grid"?"list":"grid"}
     else if(act==="search"){st.search=!st.search;st.fab=false;if(!st.search)st.q=""}
     else if(act==="fab"){st.fab=!st.fab}
     else if(act==="detail"){st.view="detail";st.bookId=id}
+    else if(act==="memos"){st.view="detail";st.bookId=id;st.toMemos=true}
+    else if(act==="to-memos"){scrollMemos();return}
     else if(act==="home"){st.view="home";st.fab=false}
-    else if(act==="register"){st.view="register";st.fab=false}
-    else if(act==="memo"){st.view="memo";st.fab=false;st.memoBook=id||(st.bookId&&find(st.bookId)?st.bookId:books[0].id);st.from=id?"detail":"home";if(id)st.bookId=id}
-    else if(act==="memo-back"){st.view=st.from==="detail"?"detail":"home"}
+    else if(act==="register"){st.back=st.view;st.view="register";st.editBook=null;st.fab=false}
+    else if(act==="edit-book"){st.back=st.view;st.view="register";st.editBook=id;st.bookId=id}
+    else if(act==="memo"){st.back=st.view;st.view="memo";st.editMemo=null;st.fab=false;st.memoBook=id||books[0].id}
+    else if(act==="edit-memo"){st.back="detail";st.view="memo";st.editMemo={bookId:st.bookId,i:Number(el.getAttribute("data-i"))}}
+    else if(act==="form-close"){st.view=st.back||"home";st.editBook=null;st.editMemo=null}
     else if(act==="logout"){say("体験版ではログアウトしません。");return}
-    else if(act==="fetch"){say("体験版では自動取得を使えません。タイトルを入力して登録できます。");return}
+    else if(act==="fetch"){say("体験版では自動取得を使えません。"+(st.editBook?"":"タイトルを入力して登録できます。"));return}
     else if(act==="place-del"){places.splice(Number(el.getAttribute("data-i")),1)}
     else return;
     render();
@@ -655,17 +675,19 @@ h2{font-family:var(--serif);font-weight:700;font-size:clamp(25px,2.8vw,36px);lin
     e.preventDefault();
     var form=e.target.id;
     if(form==="sd-book-form"){
+      if(st.editBook){say("体験版では編集した内容を保存できません。");return}
       var title=val("sd-b-title");
       if(!title){say("タイトルを入力してください");document.getElementById("sd-b-title").focus();return}
       var pages=parseInt(val("sd-b-pages"),10);
       books.push({id:++seq,title:title,author:val("sd-b-author"),publisher:val("sd-b-pub"),pages:pages>0?pages:0,page:0,price:0,status:val("sd-b-status")||"wish",tags:[],cover:"",note:"",memos:[]});
-      st.err="";st.view="home";st.tab="all";st.q="";st.search=false;
+      st.view="home";st.tab="all";st.q="";st.search=false;
       render();say("登録しました。体験版のため、ページを閉じると消えます。");
     }else if(form==="sd-memo-form"){
+      if(st.editMemo){say("体験版では編集した内容を保存できません。");return}
       var book=find(Number(val("sd-m-book"))),text=val("sd-m-text");
       if(!book||!text){say("メモ内容を入力してください");document.getElementById("sd-m-text").focus();return}
       book.memos.push({page:val("sd-m-page").replace(/[^0-9]/g,""),type:val("sd-m-type"),tag:val("sd-m-tag"),text:text});
-      st.err="";st.view="detail";st.bookId=book.id;
+      st.view="detail";st.bookId=book.id;
       render();say("メモを追加しました。体験版のため、ページを閉じると消えます。");
     }else if(form==="sd-place-form"){
       var name=val("sd-place");
