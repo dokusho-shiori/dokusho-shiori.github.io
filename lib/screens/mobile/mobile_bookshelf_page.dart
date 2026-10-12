@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../models/book.dart';
 import '../../services/firestore_service.dart';
-import '../../theme/app_theme.dart';
 import '../../theme/mobile_theme.dart';
 import '../../utils/responsive_nav.dart';
 import '../../utils/cover_image.dart';
 import '../book_detail_screen.dart';
 import '../settings_screen.dart';
 
-/// 本棚タブの中身。
-/// ヘッダーは外枠（MobileShell）の固定ヘッダーを使うので、ここには持たない。
-/// 検索の開閉と表示切替は外枠のアイコンから操作されるため、状態を外枠と共有する。
+/// 本棚タブの中身（本の一覧だけ）。
+/// ヘッダーと「本棚／読み中／読みたい…」の並びは外枠（MobileShell）が
+/// 全画面共通で出しているので、ここには持たない。
+/// 状態の絞り込み・検索の開閉・表示切替は外枠から操作されるため、状態を外枠と共有する。
 class MobileBookshelfPage extends StatefulWidget {
+  final ValueNotifier<String> filter;     // all / reading / wish / stack / done
   final ValueNotifier<bool> searchOpen;   // 検索欄を開いているか
   final ValueNotifier<String> viewMode;   // grid=表紙グリッド list=リスト
   const MobileBookshelfPage({
     super.key,
+    required this.filter,
     required this.searchOpen,
     required this.viewMode,
   });
@@ -28,28 +30,27 @@ class MobileBookshelfPageState extends State<MobileBookshelfPage> {
   final _firestoreService = FirestoreService();
   final _searchController = TextEditingController();
 
-  String _filter = 'all';
   String _sort = 'newest';
   String _searchQuery = '';
   bool _sheetOpen = false;
 
+  String get _filter => widget.filter.value;
   bool get _searchOpen => widget.searchOpen.value;
   String get _viewMode => widget.viewMode.value;
-
-  int _countStatus(List<Book> books, String status) =>
-      books.where((b) => b.status == status).length;
 
   @override
   void initState() {
     super.initState();
+    widget.filter.addListener(_rebuild);
     widget.searchOpen.addListener(_onSearchOpenChanged);
-    widget.viewMode.addListener(_onViewModeChanged);
+    widget.viewMode.addListener(_rebuild);
   }
 
   @override
   void dispose() {
+    widget.filter.removeListener(_rebuild);
     widget.searchOpen.removeListener(_onSearchOpenChanged);
-    widget.viewMode.removeListener(_onViewModeChanged);
+    widget.viewMode.removeListener(_rebuild);
     _searchController.dispose();
     super.dispose();
   }
@@ -65,14 +66,8 @@ class MobileBookshelfPageState extends State<MobileBookshelfPage> {
     });
   }
 
-  void _onViewModeChanged() {
+  void _rebuild() {
     if (mounted) setState(() {});
-  }
-
-  /// ホームのタイルなどから「読み中だけ」などを指定して開くとき用。
-  void setFilter(String filter) {
-    widget.searchOpen.value = false;
-    setState(() => _filter = filter);
   }
 
   /// 下から出すシート。枠の中に開く。
@@ -195,7 +190,6 @@ class MobileBookshelfPageState extends State<MobileBookshelfPage> {
           final displayed = _applyFilterSort(allBooks);
           return Column(
             children: [
-              _buildStatusTabs(allBooks),
               if (_searchOpen) _buildSearchBar(),
               Expanded(
                 child: displayed.isEmpty
@@ -234,62 +228,6 @@ class MobileBookshelfPageState extends State<MobileBookshelfPage> {
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: MobileTheme.cardBorder)),
         ),
-      ),
-    );
-  }
-
-  // PC版の本棚タブ（_buildNavTabs）と同じ項目・順番・配色。設定タブは含めない。
-  Widget _buildStatusTabs(List<Book> allBooks) {
-    final tabs = [
-      {'key': 'all',     'label': '📚 本棚',    'count': '${allBooks.length}'},
-      {'key': 'reading', 'label': '📖 読み中',  'count': '${_countStatus(allBooks, 'reading')}'},
-      {'key': 'wish',    'label': '🌙 読みたい', 'count': '${_countStatus(allBooks, 'wish')}'},
-      {'key': 'stack',   'label': '📚 積読',    'count': '${_countStatus(allBooks, 'stack')}'},
-      {'key': 'done',    'label': '✅ 読了',    'count': '${_countStatus(allBooks, 'done')}'},
-    ];
-
-    return Container(
-      color: AppTheme.tabBg,
-      height: 52,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: tabs.length,
-        itemBuilder: (_, i) {
-          final tab = tabs[i];
-          final isActive = _filter == tab['key'];
-          return GestureDetector(
-            onTap: () => setState(() => _filter = tab['key']!),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isActive ? AppTheme.gold : Colors.transparent,
-                    width: 2.5)),
-              ),
-              child: Row(
-                children: [
-                  Text(tab['label']!,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                      color: isActive ? AppTheme.gold : const Color(0xFFAAAAAA))),
-                  const SizedBox(width: 5),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: isActive ? AppTheme.gold : const Color(0xFF555555),
-                      borderRadius: BorderRadius.circular(10)),
-                    child: Text(tab['count']!,
-                      style: TextStyle(
-                        fontSize: 11, fontWeight: FontWeight.bold,
-                        color: isActive ? Colors.black : Colors.white)),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
