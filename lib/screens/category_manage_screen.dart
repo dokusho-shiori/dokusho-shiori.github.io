@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/screen_app_bar.dart';
 
 class CategoryManageScreen extends StatefulWidget {
   const CategoryManageScreen({super.key});
@@ -161,15 +162,7 @@ class _CategoryManageScreenState extends State<CategoryManageScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.bg,
-      appBar: AppBar(
-        backgroundColor: AppTheme.headerBg,
-        title: const Text(
-          '🗂️ 本の種類を管理',
-          style: TextStyle(
-              color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: buildScreenAppBar(context, title: '🗂️ 本の種類を管理'),
       body: StreamBuilder<List<Category>>(
         stream: _service.categoriesStream(),
         builder: (context, snapshot) {

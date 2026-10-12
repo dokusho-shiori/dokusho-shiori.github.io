@@ -9,6 +9,7 @@ import '../utils/responsive_nav.dart';
 import '../utils/link_utils.dart';
 import 'book_detail_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/screen_app_bar.dart';
 
 class BookFormScreen extends StatefulWidget {
   final Book? book;
@@ -297,13 +298,8 @@ class _BookFormScreenState extends State<BookFormScreen> {
     final isEdit = widget.book != null;
     return Scaffold(
       backgroundColor: AppTheme.bg,
-      appBar: AppBar(
-        backgroundColor: AppTheme.headerBg,
-        title: Text(isEdit ? '✏️ 本を編集' : '📚 本を登録',
-          style: const TextStyle(
-            color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: buildScreenAppBar(context,
+        title: isEdit ? '✏️ 本を編集' : '📚 本を登録'),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),

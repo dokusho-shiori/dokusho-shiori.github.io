@@ -12,6 +12,7 @@ import '../utils/link_utils.dart';
 import '../utils/url_utils.dart';
 import 'book_form_screen.dart';
 import 'memo_form_screen.dart';
+import '../widgets/screen_app_bar.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -97,14 +98,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   Widget _buildScaffold(BuildContext context, Book b) {
     return Scaffold(
       backgroundColor: AppTheme.bg,
-      appBar: AppBar(
-        backgroundColor: AppTheme.headerBg,
-        // 左上は「戻る」矢印ではなく「閉じる」×にする
-        leading: const CloseButton(color: Colors.white),
-        title: const Text('本の詳細',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      // 左上は「戻る」矢印ではなく「閉じる」×にする
+      appBar: buildScreenAppBar(context, title: '本の詳細', closeButton: true),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),

@@ -5,6 +5,7 @@ import '../models/book.dart';
 import '../theme/app_theme.dart';
 import '../services/notion_service.dart';
 import 'settings_screen.dart';
+import '../widgets/screen_app_bar.dart';
 
 class MemoFormScreen extends StatefulWidget {
   final List<Book> books;
@@ -186,20 +187,13 @@ class _MemoFormScreenState extends State<MemoFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.bg,
-      appBar: AppBar(
-        // 左上は「戻る」矢印ではなく「閉じる」×にする
-        leading: const CloseButton(color: Colors.white),
-        backgroundColor: AppTheme.headerBg,
-        title: Text(_isEdit ? '✏️ メモを編集' : widget.isCopy ? '📋 メモをコピー' : '📝 メモを追加',
-          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          TextButton(
-            onPressed: _isSaving ? null : _save,
-            child: const Text('保存する',
-              style: TextStyle(color: AppTheme.gold, fontSize: 16, fontWeight: FontWeight.w700)),
-          ),
-        ],
+      // 左上は「戻る」矢印ではなく「閉じる」×にする
+      appBar: buildScreenAppBar(
+        context,
+        title: _isEdit ? '✏️ メモを編集' : widget.isCopy ? '📋 メモをコピー' : '📝 メモを追加',
+        closeButton: true,
+        actionLabel: '保存する',
+        onAction: _isSaving ? null : _save,
       ),
       body: Center(
         child: ConstrainedBox(
