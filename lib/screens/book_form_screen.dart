@@ -395,20 +395,12 @@ class _BookFormScreenState extends State<BookFormScreen> {
           ),
           const SizedBox(height: 16),
 
-          // バーコードを読んで自動入力
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isFetching ? null : _scanBarcode,
-              icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
-              label: const Text('バーコードを読んで自動入力',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.btnRegister,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
+          // バーコードを読んで自動入力（表紙のボタンと同じデザイン）
+          Center(
+            child: _CoverBtn(
+              icon: Icons.qr_code_scanner_rounded,
+              label: 'バーコードを読んで自動入力',
+              onTap: _isFetching ? null : _scanBarcode,
             ),
           ),
           const SizedBox(height: 4),
@@ -693,7 +685,7 @@ class _BookFormScreenState extends State<BookFormScreen> {
 class _CoverBtn extends StatelessWidget {
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap; // null のときは押せない状態にする
   const _CoverBtn({required this.icon, required this.label, required this.onTap});
 
   @override
