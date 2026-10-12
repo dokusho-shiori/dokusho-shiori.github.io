@@ -7,6 +7,7 @@ import '../models/book.dart';
 import '../models/category.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/author_utils.dart';
 import '../utils/breakpoint.dart';
 import '../utils/cover_image.dart';
 import '../utils/responsive_nav.dart';
@@ -157,6 +158,7 @@ class _BookFormScreenState extends State<BookFormScreen> {
     setState(() => _isFetching = true);
     try {
       bool googleFound = false;
+      bool gotPages = false; // この取得でページ数が取れたか
 
       // Google Books
       final res = await http.get(
@@ -170,7 +172,10 @@ class _BookFormScreenState extends State<BookFormScreen> {
           final vi = (items[0] as Map<String, dynamic>)['volumeInfo'] as Map<String, dynamic>;
           final title = vi['title'] as String? ?? '';
           final authorsRaw = vi['authors'];
-          final authors = authorsRaw is List ? authorsRaw.cast<String>().join('・') : '';
+          // 余計なカンマ・生没年・空白などを取り除いてからつなぐ
+          final authors = authorsRaw is List
+              ? joinAuthors(authorsRaw.map((a) => '$a'))
+              : '';
           final publisher = vi['publisher'] as String? ?? '';
           final pageCount = vi['pageCount'] as int? ?? 0;
           setState(() {
@@ -179,6 +184,7 @@ class _BookFormScreenState extends State<BookFormScreen> {
             if (publisher.isNotEmpty) _publisherController.text = publisher;
             if (pageCount > 0) _pagesController.text = '$pageCount';
           });
+          if (pageCount > 0) gotPages = true;
         }
       }
 
@@ -194,11 +200,36 @@ class _BookFormScreenState extends State<BookFormScreen> {
             final summary = entry['summary'] as Map<String, dynamic>?;
             if (summary != null) {
               final title = summary['title'] as String? ?? '';
-              final author = summary['author'] as String? ?? '';
               final publisher = summary['publisher'] as String? ?? '';
+              final onix = entry['onix'] as Map<String, dynamic>?;
+
+              // 著者名：1人ずつの名前（「村上, 春樹, 1949-」の形）があればそれを使い、
+              // なければまとめの文字列（「村上,春樹,1949-」）を人ごとに分ける。
+              // どちらも余計なカンマ・生没年・役割を取り除く。
+              final rawAuthors = <String>[];
+              int pages = 0;
+              try {
+                final detail = onix?['DescriptiveDetail'] as Map<String, dynamic>?;
+                for (final c in (detail?['Contributor'] as List? ?? const [])) {
+                  final name = ((c as Map)['PersonName'] as Map?)?['content'];
+                  if (name is String && name.trim().isNotEmpty) rawAuthors.add(name);
+                }
+                // ページ数（単位が「ページ」のものだけ）
+                for (final e in (detail?['Extent'] as List? ?? const [])) {
+                  final ext = e as Map;
+                  if ('${ext['ExtentUnit']}' == '03') {
+                    final v = int.tryParse('${ext['ExtentValue']}') ?? 0;
+                    if (v > pages) pages = v;
+                  }
+                }
+              } catch (_) {}
+              if (rawAuthors.isEmpty) {
+                rawAuthors.addAll(splitAuthorSummary(summary['author'] as String? ?? ''));
+              }
+              final author = joinAuthors(rawAuthors);
+
               String? price;
               try {
-                final onix = entry['onix'] as Map<String, dynamic>?;
                 final supply = onix?['ProductSupply'] as Map<String, dynamic>?;
                 final detail = supply?['SupplyDetail'] as Map<String, dynamic>?;
                 final prices = detail?['Price'] as List?;
@@ -209,7 +240,10 @@ class _BookFormScreenState extends State<BookFormScreen> {
                 if (!googleFound && author.isNotEmpty) _authorController.text = author;
                 if (publisher.isNotEmpty) _publisherController.text = publisher;
                 if (price != null && price!.isNotEmpty) _priceController.text = price!;
+                // ページ数は、先に取れていなければここで入れる
+                if (!gotPages && pages > 0) _pagesController.text = '$pages';
               });
+              if (pages > 0) gotPages = true;
             }
           }
         }
