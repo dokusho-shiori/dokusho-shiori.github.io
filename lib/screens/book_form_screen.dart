@@ -1,12 +1,17 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import '../models/book.dart';
 import '../models/category.dart';
 import '../services/firestore_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/breakpoint.dart';
+import '../utils/cover_image.dart';
 import '../utils/responsive_nav.dart';
 import '../utils/link_utils.dart';
+import 'barcode_scan_screen.dart';
 import 'book_detail_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/screen_app_bar.dart';
@@ -137,8 +142,9 @@ class _BookFormScreenState extends State<BookFormScreen> {
       return _snack('ISBN（10/13桁）またはASIN（10桁）を入力してください');
     }
 
-    // カバーを即時表示
-    if (asin != null) {
+    // カバーを即時表示（自分で撮った写真を表紙にしているときは、それを残す）
+    final hasPhotoCover = _coverUrl != null && isPhotoCover(_coverUrl!);
+    if (asin != null && !hasPhotoCover) {
       setState(() => _coverUrl =
           'https://images-na.ssl-images-amazon.com/images/P/$asin.01.MZZZZZZZ.jpg');
     }
@@ -214,6 +220,40 @@ class _BookFormScreenState extends State<BookFormScreen> {
       _snackLong('取得に失敗しました: $e');
     }
     setState(() => _isFetching = false);
+  }
+
+  // 写真の表紙の上限（縮めたあとの大きさ）。本1冊のデータに収まるようにする
+  static const int _maxCoverBytes = 400 * 1024;
+
+  /// 写真を撮る／選ぶ → 小さく縮めて表紙にする。
+  /// 画像は本のデータの中に保存するので、別の保存場所（有料）は使わない。
+  Future<void> _pickCover(ImageSource source) async {
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 480,
+        maxHeight: 720,
+        imageQuality: 72,
+      );
+      if (picked == null) return; // 何も選ばずに閉じた
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      if (bytes.lengthInBytes > _maxCoverBytes) {
+        _snackLong('写真のデータが大きすぎて表紙にできませんでした。別の写真で試してください');
+        return;
+      }
+      setState(() => _coverUrl = photoCoverDataUrl(bytes));
+    } catch (e) {
+      if (mounted) _snackLong('写真を読み込めませんでした: $e');
+    }
+  }
+
+  /// 本の裏のバーコードをカメラで読み、読めたISBNでそのまま情報を取得する。
+  Future<void> _scanBarcode() async {
+    final isbn = await pushResponsive<String>(context, const BarcodeScanScreen());
+    if (isbn == null || !mounted) return;
+    _isbnController.text = isbn;
+    await _fetchBookInfo(isbn);
   }
 
   Future<void> _fetchISBN() => _fetchBookInfo(_isbnController.text);
@@ -310,16 +350,62 @@ class _BookFormScreenState extends State<BookFormScreen> {
           if (_coverUrl != null)
             Center(
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(bottom: 10),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Image.network(_coverUrl!, height: 120,
-                    key: ValueKey(_coverUrl),
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.book, size: 60, color: AppTheme.textSecondary)),
+                  child: SizedBox(
+                    height: 120,
+                    child: CoverNetworkImage(
+                      key: ValueKey(_coverUrl),
+                      url: _coverUrl!,
+                      fit: BoxFit.contain,
+                      placeholderBuilder: (_) => const Icon(
+                        Icons.book, size: 60, color: AppTheme.textSecondary),
+                    ),
+                  ),
                 ),
               ),
             ),
+
+          // 表紙を自分の写真にする
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              // パソコンのブラウザでは「撮る」が使えないので、スマホ表示とアプリ版だけに出す
+              if (!kIsWeb || isMobileLayout(context))
+                _CoverBtn(
+                  icon: Icons.photo_camera_rounded,
+                  label: '表紙を撮る',
+                  onTap: () => _pickCover(ImageSource.camera),
+                ),
+              _CoverBtn(
+                icon: Icons.photo_library_rounded,
+                label: '写真から選ぶ',
+                onTap: () => _pickCover(ImageSource.gallery),
+              ),
+              if (_coverUrl != null)
+                _CoverBtn(
+                  icon: Icons.close_rounded,
+                  label: '表紙を外す',
+                  onTap: () => setState(() => _coverUrl = null),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // バーコードを読んで自動入力（表紙のボタンと同じデザイン）
+          Center(
+            child: _CoverBtn(
+              icon: Icons.qr_code_scanner_rounded,
+              label: 'バーコードを読んで自動入力',
+              onTap: _isFetching ? null : _scanBarcode,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const _Note(text: '本の裏のバーコードをカメラで読むと、下のISBNと本の情報が入ります'),
+          const SizedBox(height: 14),
 
           // ISBN
           const _Note(text: '📖 ISBN-13　表紙・タイトル・著者・出版社を自動取得'),
@@ -596,6 +682,29 @@ class _BookFormScreenState extends State<BookFormScreen> {
 }
 
 // 注釈テキスト（グレー）
+class _CoverBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap; // null のときは押せない状態にする
+  const _CoverBtn({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppTheme.textPrimary,
+        side: const BorderSide(color: AppTheme.border, width: 1.5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
+  }
+}
+
 class _Note extends StatelessWidget {
   final String text;
   const _Note({required this.text});
